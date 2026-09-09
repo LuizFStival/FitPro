@@ -96,8 +96,8 @@ export default function RoutinesView({
       return active;
     }
 
-    // 'all': Show all routines
-    return allRoutines;
+    // 'all': Show all visible routines; hidden routines stay in the hidden tab
+    return allRoutines.filter((r) => !hiddenRoutineIds.includes(r.id));
   }, [allRoutines, viewFilter, hiddenRoutineIds]);
 
   // Selected routine state

@@ -78,6 +78,10 @@ function checkIsBeginnerOrLegacy(title: string, daysSinceLast: number, hasMoreRe
     return true;
   }
 
+  if (/\(iniciante\)\s*$/.test(lower)) {
+    return true;
+  }
+
   // If this workout hasn't been performed in over 60 days and the user has actively been doing other workouts
   if (daysSinceLast > 60 && hasMoreRecentWorkouts) {
     return true;
@@ -316,13 +320,13 @@ export function analyzeRoutineSplits(
       return hTitle === gTitle || hTitle.includes(gTitle) || gTitle.includes(hTitle);
     });
 
-    const isBeginnerOrLegacy = !isHevyOfficial && checkIsBeginnerOrLegacy(
+    const isBeginnerOrLegacy = checkIsBeginnerOrLegacy(
       group.rawTitle,
       daysSinceLast,
       workouts.length > 5
     );
 
-    const isActiveRoutine = isHevyOfficial || (!isBeginnerOrLegacy && daysSinceLast <= 60);
+    const isActiveRoutine = !isBeginnerOrLegacy && (isHevyOfficial || daysSinceLast <= 60);
 
     routineSplits.push({
       id: group.normalizedKey.replace(/[^a-z0-9]/gi, '_'),

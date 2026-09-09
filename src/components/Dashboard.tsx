@@ -92,6 +92,17 @@ export default function Dashboard({ user }: DashboardProps) {
   const plateaus = useMemo(() => calculateExercisePlateaus(workouts), [workouts]);
   const criticalCount = useMemo(() => plateaus.filter(p => p.status === 'critical').length, [plateaus]);
   const routines = useMemo(() => analyzeRoutineSplits(workouts, plateaus, hevyRoutines), [workouts, plateaus, hevyRoutines]);
+  const autoHiddenRoutineIds = useMemo(() => {
+    return routines
+      .filter((routine) => routine.isBeginnerOrLegacy || /\(iniciante\)\s*$/i.test(routine.title))
+      .map((routine) => routine.id);
+  }, [routines]);
+  const effectiveHiddenRoutineIds = useMemo(() => {
+    return Array.from(new Set([...hiddenRoutineIds, ...autoHiddenRoutineIds]));
+  }, [hiddenRoutineIds, autoHiddenRoutineIds]);
+  const launcherRoutines = useMemo(() => {
+    return routines.filter((routine) => !effectiveHiddenRoutineIds.includes(routine.id));
+  }, [routines, effectiveHiddenRoutineIds]);
 
   const availableTemplates = useMemo(() => {
     const fromWorkouts = extractExerciseTemplatesFromWorkouts(workouts);
@@ -561,7 +572,7 @@ export default function Dashboard({ user }: DashboardProps) {
               </div>
               {routines.length > 0 ? (
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-brand-primary/10 text-brand-primary border border-brand-primary/20 font-semibold">
-                  {routines.length} {routines.length === 1 ? 'rotina' : 'rotinas'}
+                  {launcherRoutines.length} {launcherRoutines.length === 1 ? 'rotina' : 'rotinas'}
                 </span>
               ) : null}
             </button>
@@ -680,7 +691,7 @@ export default function Dashboard({ user }: DashboardProps) {
             workouts={workouts}
             plateaus={plateaus}
             hevyRoutines={hevyRoutines}
-            hiddenRoutineIds={hiddenRoutineIds}
+            hiddenRoutineIds={effectiveHiddenRoutineIds}
             onToggleHideRoutine={handleToggleHideRoutine}
             onSetHiddenRoutines={handleSetHiddenRoutines}
             onOpenSettings={() => setIsSettingsOpen(true)}
@@ -693,7 +704,7 @@ export default function Dashboard({ user }: DashboardProps) {
           <WorkoutsView
             workouts={workouts}
             plateaus={plateaus}
-            hiddenRoutineIds={hiddenRoutineIds}
+            hiddenRoutineIds={effectiveHiddenRoutineIds}
             lastSyncedAt={lastSyncedAt}
             syncing={syncing}
             syncProgress={syncProgress}
@@ -873,7 +884,7 @@ export default function Dashboard({ user }: DashboardProps) {
       <WorkoutLauncherModal
         isOpen={isLauncherOpen}
         onClose={() => setIsLauncherOpen(false)}
-        routines={routines}
+        routines={launcherRoutines}
         onSelectRoutine={handleStartWorkoutFromRoutine}
         onStartEmpty={handleStartEmptyWorkout}
         hasActiveSession={Boolean(activeSession)}
