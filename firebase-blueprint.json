@@ -1,0 +1,70 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User specific data and settings",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "email": { "type": "string" },
+        "hevyApiKey": { "type": "string", "description": "Hevy API Key for integration" },
+        "hiddenRoutineIds": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "lastSyncedAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "email"]
+    },
+    "Workout": {
+      "title": "Workout",
+      "description": "Synced workout data from Hevy",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "startTime": { "type": "string", "format": "date-time" },
+        "endTime": { "type": "string", "format": "date-time" },
+        "duration": { "type": "integer" },
+        "totalVolume": { "type": "number" },
+        "totalSets": { "type": "integer" },
+        "exercises": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "id", "startTime", "exercises"]
+    },
+    "Insight": {
+      "title": "Insight",
+      "description": "AI-generated insights about the user's progress",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "content": { "type": "string" },
+        "type": { "type": "string", "enum": ["frequency", "volume", "pr", "consistency"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "content", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile document"
+    },
+    "/users/{userId}/workouts/{workoutId}": {
+      "schema": "Workout",
+      "description": "Workout subcollection for each user"
+    },
+    "/users/{userId}/insights/{insightId}": {
+      "schema": "Insight",
+      "description": "AI insights for the user"
+    }
+  }
+}

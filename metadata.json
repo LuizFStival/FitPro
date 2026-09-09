@@ -1,0 +1,8 @@
+{
+  "name": "HevyPulse Dashboard",
+  "description": "Aplicativo avançado de treino e análise fitness integrado com a API do Hevy. Inicie treinos baseados nas suas rotinas, registre séries e cargas, e sincronize diretamente com a API do Hevy.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
