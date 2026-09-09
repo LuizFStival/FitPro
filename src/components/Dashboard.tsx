@@ -1,8 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { User } from 'firebase/auth';
-import { doc, getDoc, setDoc, collection, query, orderBy, getDocs, writeBatch } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
-import { Dumbbell, Activity, Zap, LogOut, Settings, RefreshCw, TrendingUp, Info, Layers, AlertOctagon, ClipboardList, Play, CheckCircle2, X } from 'lucide-react';
+import { Dumbbell, Activity, Zap, Settings, RefreshCw, TrendingUp, Info, Layers, AlertOctagon, ClipboardList, Play, CheckCircle2, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { fetchAllHevyWorkouts, fetchHevyRoutines, postHevyWorkout, fetchExerciseTemplates } from '../services/hevyService';
 import { generateWorkoutInsights } from '../services/aiService';
@@ -24,25 +21,32 @@ import WorkoutLauncherModal from './WorkoutLauncherModal';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-// Helper to sanitize data for Firestore (replaces undefined with null or removes undefined keys)
-function sanitizeForFirestore<T>(data: T): T {
-  if (data === undefined) return null as any;
-  if (data === null || typeof data !== 'object') return data;
-  if (data instanceof Date) return data;
-  if (Array.isArray(data)) {
-    return data.map((item) => (item === undefined ? null : sanitizeForFirestore(item))) as any;
+export interface DashboardUser {
+  uid: string;
+  email?: string | null;
+  displayName?: string | null;
+  photoURL?: string | null;
+}
+
+function readLocalJson<T>(key: string, fallback: T): T {
+  try {
+    const stored = localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : fallback;
+  } catch {
+    return fallback;
   }
-  const clean: Record<string, any> = {};
-  for (const [key, value] of Object.entries(data as Record<string, any>)) {
-    if (value !== undefined) {
-      clean[key] = sanitizeForFirestore(value);
-    }
-  }
-  return clean as T;
+}
+
+function writeLocalJson(key: string, value: unknown) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+
+function getUserStorageKey(userId: string, name: string) {
+  return `hevy_${name}_${userId}`;
 }
 
 interface DashboardProps {
-  user: User;
+  user: DashboardUser;
 }
 
 export default function Dashboard({ user }: DashboardProps) {
@@ -239,10 +243,9 @@ export default function Dashboard({ user }: DashboardProps) {
         createdAt: new Date().toISOString(),
       };
 
-      const firestoreData = sanitizeForFirestore(localWorkout);
-      await setDoc(doc(db, 'users', user.uid, 'workouts', String(workoutId)), firestoreData, { merge: true });
-
-      setWorkouts((prev) => [localWorkout, ...prev.filter((w) => String(w.id) !== String(workoutId))]);
+      const nextWorkouts = [localWorkout, ...workouts.filter((w) => String(w.id) !== String(workoutId))];
+      setWorkouts(nextWorkouts);
+      writeLocalJson(getUserStorageKey(user.uid, 'workouts'), nextWorkouts);
 
       setActiveSession(null);
       localStorage.removeItem(`hevy_active_workout_${user.uid}`);
@@ -270,7 +273,6 @@ export default function Dashboard({ user }: DashboardProps) {
         : [...prev, routineId];
       try {
         localStorage.setItem(`hevy_hidden_routines_${user.uid}`, JSON.stringify(next));
-        setDoc(doc(db, 'users', user.uid), { hiddenRoutineIds: next }, { merge: true }).catch(console.error);
       } catch (e) {
         console.error(e);
       }
@@ -282,7 +284,6 @@ export default function Dashboard({ user }: DashboardProps) {
     setHiddenRoutineIds(routineIds);
     try {
       localStorage.setItem(`hevy_hidden_routines_${user.uid}`, JSON.stringify(routineIds));
-      await setDoc(doc(db, 'users', user.uid), { hiddenRoutineIds: routineIds }, { merge: true });
     } catch (e) {
       console.error(e);
     }
@@ -291,63 +292,50 @@ export default function Dashboard({ user }: DashboardProps) {
   const fetchUserData = async () => {
     setLoading(true);
     try {
-      const userDoc = await getDoc(doc(db, 'users', user.uid));
-      let currentApiKey = '';
-      if (userDoc.exists()) {
-        const data = userDoc.data();
-        currentApiKey = data.hevyApiKey || '';
-        setHevyApiKey(currentApiKey);
+      const currentApiKey = localStorage.getItem(getUserStorageKey(user.uid, 'api_key')) || '';
+      setHevyApiKey(currentApiKey);
 
-        if (data.hiddenRoutineIds && Array.isArray(data.hiddenRoutineIds)) {
-          setHiddenRoutineIds(data.hiddenRoutineIds);
-          localStorage.setItem(`hevy_hidden_routines_${user.uid}`, JSON.stringify(data.hiddenRoutineIds));
-        }
+      const savedHiddenRoutineIds = readLocalJson<string[]>(getUserStorageKey(user.uid, 'hidden_routines'), []);
+      if (savedHiddenRoutineIds.length > 0) {
+        setHiddenRoutineIds(savedHiddenRoutineIds);
+      }
 
-        const realSyncTime = data.lastSyncedAt || localStorage.getItem(`hevy_last_synced_${user.uid}`) || null;
-        setLastSyncedAt(realSyncTime);
+      const realSyncTime = localStorage.getItem(`hevy_last_synced_${user.uid}`) || null;
+      setLastSyncedAt(realSyncTime);
 
-        // Fetch all historical workouts without limit
-        const workoutsQuery = query(
-          collection(db, 'users', user.uid, 'workouts'),
-          orderBy('startTime', 'desc')
-        );
-        const workoutsSnap = await getDocs(workoutsQuery);
-        const workoutsData = workoutsSnap.docs.map(d => d.data());
-        setWorkouts(workoutsData);
+      const workoutsData = readLocalJson<any[]>(getUserStorageKey(user.uid, 'workouts'), []);
+      setWorkouts(workoutsData);
 
-        if (workoutsData.length > 0) {
-          generateInsights(workoutsData);
-        } else if (currentApiKey) {
-          // If user has an API key configured but zero workouts in database, trigger full initial sync
-          setTimeout(() => {
-            handleSync(currentApiKey);
-          }, 100);
-        }
+      if (workoutsData.length > 0) {
+        generateInsights(workoutsData);
+      } else if (currentApiKey) {
+        setTimeout(() => {
+          handleSync(currentApiKey);
+        }, 100);
+      }
 
-        // Fetch official routines and exercise templates from Hevy if API key exists
-        if (currentApiKey) {
-          fetchHevyRoutines(currentApiKey)
-            .then((r) => {
-              if (Array.isArray(r) && r.length > 0) {
-                setHevyRoutines(r);
-              }
-            })
-            .catch(() => {});
+      if (currentApiKey) {
+        fetchHevyRoutines(currentApiKey)
+          .then((r) => {
+            if (Array.isArray(r) && r.length > 0) {
+              setHevyRoutines(r);
+            }
+          })
+          .catch(() => {});
 
-          fetchExerciseTemplates(currentApiKey)
-            .then((t) => {
-              if (Array.isArray(t) && t.length > 0) {
-                setApiTemplates(
-                  t.map((item: any) => ({
-                    templateId: item.id || item.exercise_template_id,
-                    title: item.title || item.name || 'Exercício',
-                    muscleGroup: item.muscle_group || item.primary_muscle_group,
-                  }))
-                );
-              }
-            })
-            .catch(() => {});
-        }
+        fetchExerciseTemplates(currentApiKey)
+          .then((t) => {
+            if (Array.isArray(t) && t.length > 0) {
+              setApiTemplates(
+                t.map((item: any) => ({
+                  templateId: item.id || item.exercise_template_id,
+                  title: item.title || item.name || 'Exercício',
+                  muscleGroup: item.muscle_group || item.primary_muscle_group,
+                }))
+              );
+            }
+          })
+          .catch(() => {});
       }
     } catch (error: any) {
       console.error("Error fetching data:", error);
@@ -385,59 +373,35 @@ export default function Dashboard({ user }: DashboardProps) {
         setSyncError('Nenhum treino retornado pela API do Hevy (histórico vazio ou sem treinos registrados).');
       }
 
-      // Save workouts to Firestore in chunks of 400 (batch limit is 500)
-      const chunkSize = 400;
-      for (let i = 0; i < result.workouts.length; i += chunkSize) {
-        const chunk = result.workouts.slice(i, i + chunkSize);
-        const batch = writeBatch(db);
-
-        chunk.forEach(workout => {
-          const workoutRef = doc(db, 'users', user.uid, 'workouts', workout.id);
-
-          let volume = 0;
-          let sets = 0;
-          (workout.exercises || []).forEach((ex: any) => {
-            (ex.sets || []).forEach((set: any) => {
-              volume += (Number(set.weight_kg) || 0) * (Number(set.reps) || 0);
-              sets++;
-            });
-          });
-
-          batch.set(workoutRef, {
-            userId: user.uid,
-            id: workout.id || '',
-            title: workout.title || 'Treino Hevy',
-            description: workout.description || '',
-            startTime: new Date(workout.start_time || Date.now()),
-            endTime: new Date(workout.end_time || Date.now()),
-            duration: Number(workout.duration) || 0,
-            totalVolume: volume,
-            totalSets: sets,
-            exercises: workout.exercises || [],
-            createdAt: new Date().toISOString()
+      const workoutsData = result.workouts.map((workout) => {
+        let volume = 0;
+        let sets = 0;
+        (workout.exercises || []).forEach((ex: any) => {
+          (ex.sets || []).forEach((set: any) => {
+            volume += (Number(set.weight_kg) || 0) * (Number(set.reps) || 0);
+            sets++;
           });
         });
 
-        await batch.commit();
-      }
+        return {
+          userId: user.uid,
+          id: workout.id || '',
+          title: workout.title || 'Treino Hevy',
+          description: workout.description || '',
+          startTime: workout.start_time || new Date().toISOString(),
+          endTime: workout.end_time || new Date().toISOString(),
+          duration: Number((workout as any).duration) || 0,
+          totalVolume: volume,
+          totalSets: sets,
+          exercises: workout.exercises || [],
+          createdAt: new Date().toISOString(),
+        };
+      });
 
-      // Save the real timestamp of successful API sync
-      await setDoc(doc(db, 'users', user.uid), {
-        lastSyncedAt: result.syncedAt,
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
-
+      setWorkouts(workoutsData);
+      writeLocalJson(getUserStorageKey(user.uid, 'workouts'), workoutsData);
       setLastSyncedAt(result.syncedAt);
       localStorage.setItem(`hevy_last_synced_${user.uid}`, result.syncedAt);
-
-      // Refresh data from database
-      const workoutsQuery = query(
-        collection(db, 'users', user.uid, 'workouts'),
-        orderBy('startTime', 'desc')
-      );
-      const workoutsSnap = await getDocs(workoutsQuery);
-      const workoutsData = workoutsSnap.docs.map(d => d.data());
-      setWorkouts(workoutsData);
 
       if (workoutsData.length > 0) {
         generateInsights(workoutsData);
@@ -454,10 +418,7 @@ export default function Dashboard({ user }: DashboardProps) {
 
   const saveSettings = async () => {
     try {
-      await setDoc(doc(db, 'users', user.uid), { 
-        hevyApiKey: hevyApiKey.trim(),
-        updatedAt: new Date().toISOString() 
-      }, { merge: true });
+      localStorage.setItem(getUserStorageKey(user.uid, 'api_key'), hevyApiKey.trim());
       setIsSettingsOpen(false);
       handleSync(hevyApiKey.trim());
     } catch (error: any) {
@@ -670,14 +631,6 @@ export default function Dashboard({ user }: DashboardProps) {
             >
               <Settings className="w-4 h-4" />
               <span className="text-sm">Configurações API</span>
-            </button>
-            
-            <button 
-              onClick={() => auth.signOut()}
-              className="flex items-center gap-3 p-3 rounded-xl text-white/40 hover:text-rose-400 hover:bg-rose-500/5 transition-all text-left mt-2"
-            >
-              <LogOut className="w-4 h-4" />
-              <span className="text-sm">Desconectar</span>
             </button>
           </nav>
 
