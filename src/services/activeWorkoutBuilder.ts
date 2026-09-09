@@ -1,4 +1,4 @@
-import { RoutineSplit, ExercisePlateau } from '../types/plateau';
+import { RoutineSplit, ExercisePlateau, PlateauStatus } from '../types/plateau';
 import { ActiveWorkoutSession, TrackerExercise, TrackerSet, ExerciseTemplateOption } from '../types/workoutTracker';
 
 /**

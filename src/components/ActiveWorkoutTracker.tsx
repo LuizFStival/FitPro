@@ -729,14 +729,58 @@ export default function ActiveWorkoutTracker({
       )}
 
       {/* ─────────────────────────────────────────────────────────────
+          BARRA DE CONTROLE DE EXIBIÇÃO DOS EXERCÍCIOS (Recolher / Expandir)
+          ───────────────────────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 px-1 py-1 text-xs">
+        <div className="flex items-center gap-2">
+          <span className="text-white/60 font-semibold uppercase tracking-wider text-[11px]">
+            Exercícios do Treino ({session.exercises.length})
+          </span>
+          {completedExercisesCount > 0 && (
+            <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 font-mono text-[10px] font-bold">
+              {completedExercisesCount}/{session.exercises.length} concluídos
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          {completedExercisesCount > 0 && (
+            <button
+              type="button"
+              onClick={collapseCompletedExercises}
+              className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/5 text-[11px] font-medium flex items-center gap-1.5 transition-all active:scale-95"
+              title="Recolher exercícios com todas as séries concluídas"
+            >
+              <Check className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Recolher Concluídos</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={toggleCollapseAll}
+            className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/5 text-[11px] font-medium flex items-center gap-1.5 transition-all active:scale-95"
+            title={areAllCollapsed ? 'Expandir todos os exercícios' : 'Recolher todos os exercícios'}
+          >
+            <ChevronsUpDown className="w-3.5 h-3.5 text-brand-primary" />
+            <span>{areAllCollapsed ? 'Expandir Todos' : 'Recolher Todos'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ─────────────────────────────────────────────────────────────
           LISTA DE EXERCÍCIOS DA SESSÃO (Cards Touch-First Mobile)
           ───────────────────────────────────────────────────────────── */}
       <div className="space-y-4">
         {session.exercises.map((exercise, exIndex) => {
-          const isCriticalPlateau = exercise.plateauStatus === 'critical' || (exercise.stuckSessions && exercise.stuckSessions >= 3);
-          const isWarningPlateau = exercise.plateauStatus === 'warning' || (exercise.stuckSessions && exercise.stuckSessions === 2);
-          const currentLoad = exercise.currentWeightKg || Number(exercise.sets[0]?.previousWeightKg) || 0;
-          const targetLoad = exercise.targetWeightKg || (currentLoad > 0 ? currentLoad + (currentLoad >= 40 ? 2 : 1) : 0);
+          const diag = getExercisePlateauInfo(exercise);
+          const isCriticalPlateau = diag.isCritical;
+          const isWarningPlateau = diag.isWarning;
+          const currentLoad = diag.currentLoad;
+          const targetLoad = diag.targetLoad;
+          const isCollapsed = Boolean(collapsedExercises[exercise.id]);
+          const completedSetsCount = exercise.sets.filter((s) => s.completed).length;
+          const allSetsDone = exercise.sets.length > 0 && completedSetsCount === exercise.sets.length;
 
           return (
             <div
@@ -749,38 +793,106 @@ export default function ActiveWorkoutTracker({
                   : 'border-brand-border'
               }`}
             >
-              {/* Exercise Card Header */}
+              {/* Exercise Card Header (Clicável para recolher/expandir) */}
               <div className="p-4 border-b border-brand-border/60">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2.5">
-                    <span className="w-6 h-6 rounded-xl bg-brand-primary/10 border border-brand-primary/20 text-brand-primary text-xs font-mono font-bold flex items-center justify-center shrink-0">
-                      {exIndex + 1}
-                    </span>
-                    <div>
-                      <h3 className="text-base md:text-lg font-bold text-white tracking-tight">
-                        {exercise.title}
-                      </h3>
-                      {exercise.lastSessionDate && (
-                        <span className="text-[10px] text-white/40">
-                          Última sessão registrada no histórico
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Remove Exercise Button */}
                   <button
                     type="button"
-                    onClick={() => handleRemoveExercise(exercise.id)}
-                    className="text-white/20 hover:text-rose-400 p-1.5 rounded-xl hover:bg-rose-500/10 transition-colors"
-                    title="Remover exercício da sessão"
+                    onClick={() => toggleExerciseCollapse(exercise.id)}
+                    className="flex-1 flex items-start gap-2.5 text-left group cursor-pointer select-none"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className={`w-6 h-6 rounded-xl text-xs font-mono font-bold flex items-center justify-center shrink-0 border ${
+                        allSetsDone
+                          ? 'bg-emerald-500 text-black border-emerald-400'
+                          : 'bg-brand-primary/10 border-brand-primary/20 text-brand-primary'
+                      }`}>
+                        {allSetsDone ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : exIndex + 1}
+                      </span>
+                      <ChevronDown
+                        className={`w-4 h-4 text-white/40 group-hover:text-white transition-transform duration-200 ${
+                          isCollapsed ? '-rotate-90' : 'rotate-0'
+                        }`}
+                      />
+                    </div>
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-base md:text-lg font-bold text-white tracking-tight group-hover:text-brand-primary transition-colors">
+                          {exercise.title}
+                        </h3>
+                        {/* Status Badges */}
+                        {isCriticalPlateau && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 font-mono">
+                            Crítico ({diag.stuckSessions}x)
+                          </span>
+                        )}
+                        {isWarningPlateau && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">
+                            Atenção ({diag.stuckSessions}x)
+                          </span>
+                        )}
+                        {allSetsDone && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-mono">
+                            Feito ✓
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Resumo quando recolhido */}
+                      {isCollapsed ? (
+                        <div className="mt-1 flex items-center gap-2 text-xs text-white/60">
+                          <span className="font-mono text-white/80">
+                            {completedSetsCount} de {exercise.sets.length} séries concluídas
+                          </span>
+                          {currentLoad > 0 && (
+                            <>
+                              <span>•</span>
+                              <span className="font-mono">{currentLoad} kg</span>
+                            </>
+                          )}
+                          <span className="text-[10px] text-brand-primary font-medium ml-1">
+                            (Toque para expandir)
+                          </span>
+                        </div>
+                      ) : (
+                        exercise.lastSessionDate && (
+                          <span className="text-[10px] text-white/40">
+                            Última sessão registrada no histórico
+                          </span>
+                        )
+                      )}
+                    </div>
                   </button>
+
+                  <div className="flex items-center gap-1">
+                    {/* Toggle Collapse Button */}
+                    <button
+                      type="button"
+                      onClick={() => toggleExerciseCollapse(exercise.id)}
+                      className="text-white/40 hover:text-white p-1.5 rounded-xl hover:bg-white/5 transition-colors"
+                      title={isCollapsed ? 'Expandir exercício' : 'Recolher exercício'}
+                    >
+                      <ChevronDown
+                        className={`w-4 h-4 transition-transform duration-200 ${
+                          isCollapsed ? '-rotate-90' : 'rotate-0'
+                        }`}
+                      />
+                    </button>
+
+                    {/* Remove Exercise Button */}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveExercise(exercise.id)}
+                      className="text-white/20 hover:text-rose-400 p-1.5 rounded-xl hover:bg-rose-500/10 transition-colors"
+                      title="Remover exercício da sessão"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* ─── BANNER DE ESTAGNAÇÃO DO EXERCÍCIO (Destaque Proeminente) ─── */}
-                {isCriticalPlateau ? (
+                {!isCollapsed && isCriticalPlateau ? (
                   <div className="mt-3 p-3 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-200 animate-fadeIn">
                     <div className="flex items-start gap-2.5">
                       <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
@@ -788,7 +900,7 @@ export default function ActiveWorkoutTracker({
                         <div className="font-black text-rose-300 uppercase tracking-wider flex items-center gap-1.5">
                           <span>Estagnação Crítica</span>
                           <span className="font-mono font-bold text-white bg-rose-500/30 px-2 py-0.5 rounded-full text-[10px]">
-                            {exercise.stuckSessions || 3} sessões travadas
+                            {diag.stuckSessions} sessões travadas (6+)
                           </span>
                         </div>
                         <div className="mt-1 text-white leading-relaxed">
@@ -798,37 +910,40 @@ export default function ActiveWorkoutTracker({
                             'Adicione +1 kg'
                           )} OU realize <strong>+1 repetição</strong> na primeira série!
                         </div>
-                        {exercise.plateauStrategy && (
+                        {diag.strategy && (
                           <div className="mt-1 text-white/70 text-[11px] italic">
-                            💡 Dica: {exercise.plateauStrategy}
+                            💡 Dica: {diag.strategy}
                           </div>
                         )}
                       </div>
                     </div>
                   </div>
-                ) : isWarningPlateau ? (
+                ) : !isCollapsed && isWarningPlateau ? (
                   <div className="mt-3 p-2.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-200 animate-fadeIn">
                     <div className="flex items-center gap-2 text-xs">
                       <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
                       <span>
-                        <strong>Atenção ({exercise.stuckSessions || 2} sessões):</strong> Carga idêntica nas últimas sessões. Foque em completar as repetições com cadência lenta (3s descida).
+                        <strong>Atenção ({diag.stuckSessions} sessões):</strong> Carga idêntica nas últimas 3-5 sessões. Tente +1 repetição na 1ª série ou microcarga (+1 kg).
                       </span>
                     </div>
                   </div>
                 ) : null}
 
-                {/* Exercise Notes Input */}
-                <input
-                  type="text"
-                  placeholder="Anotação (ex: banco 30°, pegada neutra, amplitude máxima)..."
-                  value={exercise.notes || ''}
-                  onChange={(e) => handleUpdateExerciseNotes(exercise.id, e.target.value)}
-                  className="w-full text-xs text-white/60 placeholder:text-white/20 bg-black/20 border border-white/5 rounded-xl px-3 py-1.5 focus:outline-none focus:border-brand-primary mt-2.5 transition-colors"
-                />
+                {/* Exercise Notes Input (Oculta quando recolhido) */}
+                {!isCollapsed && (
+                  <input
+                    type="text"
+                    placeholder="Anotação (ex: banco 30°, pegada neutra, amplitude máxima)..."
+                    value={exercise.notes || ''}
+                    onChange={(e) => handleUpdateExerciseNotes(exercise.id, e.target.value)}
+                    className="w-full text-xs text-white/60 placeholder:text-white/20 bg-black/20 border border-white/5 rounded-xl px-3 py-1.5 focus:outline-none focus:border-brand-primary mt-2.5 transition-colors"
+                  />
+                )}
               </div>
 
-              {/* ─── SÉRIES (Layout Mobile Touch-First) ─── */}
-              <div className="p-3 md:p-4 space-y-2.5">
+              {/* ─── SÉRIES (Layout Mobile Touch-First) - Exibido apenas se expandido ─── */}
+              {!isCollapsed && (
+                <div className="p-3 md:p-4 space-y-2.5">
                 {exercise.sets.map((set) => (
                   <div
                     key={set.id}
@@ -1007,6 +1122,7 @@ export default function ActiveWorkoutTracker({
                   </span>
                 </div>
               </div>
+              )}
             </div>
           );
         })}
