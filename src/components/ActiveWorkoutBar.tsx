@@ -50,7 +50,7 @@ export default function ActiveWorkoutBar({
   }
 
   return (
-    <div className="fixed mobile-fixed-bottom left-3 right-3 lg:left-72 lg:right-8 z-40 animate-slideUp">
+    <div className="fixed mobile-fixed-bottom mobile-floating-panel lg:left-72 lg:right-8 z-40 animate-slideUp">
       <div className="rounded-2xl bg-brand-surface/95 backdrop-blur-md border border-brand-primary/40 p-3 shadow-2xl shadow-black/80 flex items-center justify-between gap-3">
         {/* Left: Info */}
         <div className="flex items-center gap-3 min-w-0 cursor-pointer" onClick={onExpand}>

@@ -59,6 +59,15 @@
   min-height: -webkit-fill-available;
 }
 
+.mobile-content-frame {
+  width: min(100%, 30rem);
+  margin-inline: auto;
+}
+
+.mobile-dashboard-shell {
+  padding-inline: clamp(1rem, 4vw, 1.5rem);
+}
+
 .mobile-safe-bottom {
   padding-bottom: max(1rem, env(safe-area-inset-bottom));
 }
@@ -67,8 +76,32 @@
   bottom: max(0.75rem, env(safe-area-inset-bottom));
 }
 
+.mobile-floating-panel {
+  left: max(1rem, env(safe-area-inset-left));
+  right: max(1rem, env(safe-area-inset-right));
+  max-width: 30rem;
+  margin-inline: auto;
+}
+
 .mobile-sticky-top {
   top: env(safe-area-inset-top);
+}
+
+@media (min-width: 1024px) {
+  .mobile-content-frame {
+    width: 100%;
+    max-width: none;
+    margin-inline: 0;
+  }
+
+  .mobile-dashboard-shell {
+    padding-inline: 1.5rem;
+  }
+
+  .mobile-floating-panel {
+    max-width: none;
+    margin-inline: 0;
+  }
 }
 
 .glass-card {
