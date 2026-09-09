@@ -441,14 +441,14 @@ export default function ActiveWorkoutTracker({
   };
 
   return (
-    <div className={`flex flex-col w-full pb-32 animate-fadeIn ${isMobileHUDMode ? 'max-w-2xl mx-auto' : 'w-full'}`}>
+    <div className={`flex flex-col w-full pb-36 animate-fadeIn ${isMobileHUDMode ? 'max-w-2xl mx-auto' : 'w-full'}`}>
       
       {/* ─────────────────────────────────────────────────────────────
           STICKY TOP HUD (Mobile Gym Dashboard Header)
           Permanently docked on top so the timer, status and rest counter
           are always visible without scrolling up!
           ───────────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 -mx-1 lg:mx-0 px-3.5 py-3 rounded-2xl md:rounded-3xl bg-brand-surface/95 backdrop-blur-xl border border-brand-border shadow-2xl mb-4 transition-all">
+      <header className="sticky mobile-sticky-top z-30 -mx-1 lg:mx-0 px-3.5 py-3 rounded-2xl md:rounded-3xl bg-brand-surface/95 backdrop-blur-xl border border-brand-border shadow-2xl mb-4 transition-all">
         
         {/* Top Mini Bar: Status, Live Timer, Controls */}
         <div className="flex items-center justify-between gap-2.5">
@@ -1146,7 +1146,7 @@ export default function ActiveWorkoutTracker({
           STICKY BOTTOM FINISH BAR (Fixed Thumb Area)
           Always anchored within thumb reach on mobile
           ───────────────────────────────────────────────────────────── */}
-      <footer className="fixed bottom-3 left-3 right-3 lg:left-72 lg:right-8 z-40 animate-slideUp">
+      <footer className="fixed mobile-fixed-bottom left-3 right-3 lg:left-72 lg:right-8 z-40 animate-slideUp">
         <div className="rounded-2xl md:rounded-3xl bg-brand-surface/95 backdrop-blur-xl border border-brand-primary/40 p-3.5 shadow-2xl shadow-black/90 flex items-center justify-between gap-3">
           {/* Summary Metric */}
           <div className="flex items-center gap-3">

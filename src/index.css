@@ -13,9 +13,62 @@
 }
 
 @layer base {
+  html {
+    min-height: 100%;
+    background: #050505;
+    color-scheme: dark;
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
     @apply bg-brand-bg text-[#F5F5F7] font-sans antialiased;
+    min-height: 100dvh;
+    margin: 0;
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
   }
+
+  #root {
+    min-height: 100dvh;
+  }
+
+  input,
+  select,
+  textarea,
+  button {
+    font: inherit;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+@supports (-webkit-touch-callout: none) {
+  body {
+    min-height: -webkit-fill-available;
+  }
+}
+
+.mobile-app-shell {
+  min-height: 100dvh;
+  min-height: -webkit-fill-available;
+}
+
+.mobile-safe-bottom {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+.mobile-fixed-bottom {
+  bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+.mobile-sticky-top {
+  top: env(safe-area-inset-top);
 }
 
 .glass-card {

@@ -50,7 +50,7 @@ export default function ActiveWorkoutBar({
   }
 
   return (
-    <div className="fixed bottom-3 left-3 right-3 lg:left-72 lg:right-8 z-40 animate-slideUp">
+    <div className="fixed mobile-fixed-bottom left-3 right-3 lg:left-72 lg:right-8 z-40 animate-slideUp">
       <div className="rounded-2xl bg-brand-surface/95 backdrop-blur-md border border-brand-primary/40 p-3 shadow-2xl shadow-black/80 flex items-center justify-between gap-3">
         {/* Left: Info */}
         <div className="flex items-center gap-3 min-w-0 cursor-pointer" onClick={onExpand}>
@@ -94,7 +94,8 @@ export default function ActiveWorkoutBar({
             className="px-3.5 py-1.5 rounded-xl bg-brand-primary text-brand-bg font-bold text-xs flex items-center gap-1.5 hover:brightness-110 shadow-sm transition-all cursor-pointer"
           >
             <Maximize2 className="w-3.5 h-3.5" />
-            <span>Retornar ao Treino</span>
+            <span className="hidden sm:inline">Retornar ao Treino</span>
+            <span className="sm:hidden">Voltar</span>
           </button>
         </div>
       </div>

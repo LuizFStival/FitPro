@@ -476,7 +476,7 @@ export default function Dashboard({ user }: DashboardProps) {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-brand-bg text-white">
+      <div className="flex min-h-[100dvh] items-center justify-center bg-brand-bg text-white">
         <div className="flex flex-col items-center gap-4">
           <RefreshCw className="w-8 h-8 text-brand-primary animate-spin" />
           <span className="text-sm font-medium text-white/60">Carregando dados do HevyPulse...</span>
@@ -486,7 +486,7 @@ export default function Dashboard({ user }: DashboardProps) {
   }
 
   return (
-    <div className={`flex flex-col lg:flex-row h-screen bg-brand-bg text-[#F5F5F7] overflow-hidden ${activeTab === 'tracker' ? 'p-2 sm:p-4 lg:p-6 gap-2 lg:gap-6' : 'p-4 lg:p-6 gap-6'}`}>
+    <div className={`mobile-app-shell flex flex-col lg:flex-row bg-brand-bg text-[#F5F5F7] lg:overflow-hidden mobile-safe-bottom ${activeTab === 'tracker' ? 'p-2 sm:p-4 lg:p-6 gap-2 lg:gap-6' : 'p-3 sm:p-4 lg:p-6 gap-4 lg:gap-6'}`}>
       {/* Left Sidebar: Navigation, Identity & API */}
       <aside className={`w-full lg:w-64 flex flex-col gap-6 lg:h-full shrink-0 ${activeTab === 'tracker' ? 'hidden lg:flex' : ''}`}>
         <div className="p-5 lg:p-6 rounded-[2rem] bg-brand-surface border border-brand-border flex flex-row lg:flex-col items-center text-left lg:text-center gap-4 lg:gap-0">
@@ -657,7 +657,7 @@ export default function Dashboard({ user }: DashboardProps) {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col overflow-y-auto pr-1 lg:pr-2 custom-scrollbar min-w-0">
+      <main className="flex-1 flex flex-col overflow-y-visible lg:overflow-y-auto pr-0 lg:pr-2 custom-scrollbar min-w-0">
         {/* Success Banner if Workout Sent */}
         {trackerSuccessMsg && (
           <div className="mb-4 p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 flex items-center justify-between gap-3 shadow-lg animate-fadeIn">

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="HevyPulse">
+  <rect width="512" height="512" rx="112" fill="#050505"/>
+  <circle cx="256" cy="256" r="184" fill="#0F1720" stroke="#4FACFE" stroke-width="18"/>
+  <path d="M128 274h58l30-82 62 158 42-114 25 38h39" fill="none" stroke="#00F2FE" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M122 176h52v160h-52zM338 176h52v160h-52zM92 214h36v84H92zM384 214h36v84h-36z" fill="#F5F5F7"/>
+  <path d="M174 236h164v40H174z" fill="#F5F5F7"/>
+</svg>
