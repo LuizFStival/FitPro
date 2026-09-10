@@ -21,18 +21,11 @@ import {
   ChevronUp,
   Zap,
   Target,
-  Eye,
-  EyeOff,
   SlidersHorizontal,
-  Sliders,
-  CheckSquare,
-  Square,
-  X,
   Award,
-  Archive,
   Play
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { ExercisePlateau, RoutineExercise, RoutineSplit } from '../types/plateau';
 import { analyzeRoutineSplits } from '../services/routineAnalyzer';
 
@@ -41,8 +34,6 @@ interface RoutinesViewProps {
   plateaus: ExercisePlateau[];
   hevyRoutines?: any[];
   hiddenRoutineIds?: string[];
-  onToggleHideRoutine?: (routineId: string) => void;
-  onSetHiddenRoutines?: (routineIds: string[]) => void;
   onOpenSettings?: () => void;
   onStartWorkout?: (routine: RoutineSplit) => void;
   onStartEmptyWorkout?: () => void;
@@ -53,8 +44,6 @@ export default function RoutinesView({
   plateaus,
   hevyRoutines = [],
   hiddenRoutineIds = [],
-  onToggleHideRoutine,
-  onSetHiddenRoutines,
   onOpenSettings,
   onStartWorkout,
   onStartEmptyWorkout
@@ -63,8 +52,6 @@ export default function RoutinesView({
   const allRoutines: RoutineSplit[] = useMemo(() => {
     return analyzeRoutineSplits(workouts, plateaus, hevyRoutines);
   }, [workouts, plateaus, hevyRoutines]);
-
-  const [isManageModalOpen, setIsManageModalOpen] = useState(false);
 
   // The routines tab shows only the active/visible training split.
   // Full visibility control lives in Configurações.
@@ -160,29 +147,7 @@ export default function RoutinesView({
     });
   }, [activeRoutine, exerciseFilter]);
 
-  // Helper counts
-  const hiddenCount = hiddenRoutineIds.length;
-
-  // Quick action to hide all beginner / legacy routines
-  const handleHideAllBeginners = () => {
-    if (!onSetHiddenRoutines) return;
-    const toHide = new Set(hiddenRoutineIds);
-    allRoutines.forEach((r) => {
-      if (r.isBeginnerOrLegacy || r.daysSinceLast > 60) {
-        toHide.add(r.id);
-      }
-    });
-    onSetHiddenRoutines(Array.from(toHide));
-  };
-
-  // Quick action to restore all
-  const handleRestoreAll = () => {
-    if (onSetHiddenRoutines) {
-      onSetHiddenRoutines([]);
-    }
-  };
-
-  if (workouts.length === 0) {
+  if (allRoutines.length === 0) {
     return (
       <div className="rounded-[2rem] bg-brand-surface border border-brand-border p-12 text-center flex flex-col items-center justify-center">
         <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4 text-white/30">
@@ -236,23 +201,12 @@ export default function RoutinesView({
 
           {/* Button to Manage/Filter Routines */}
           <button
-            onClick={() => {
-              if (onOpenSettings) {
-                onOpenSettings();
-              } else {
-                setIsManageModalOpen(true);
-              }
-            }}
+            onClick={onOpenSettings}
             className="px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 bg-white/5 hover:bg-white/10 text-white/90 border border-white/10 transition-all hover:border-brand-primary/40"
             title="Gerenciar quais treinos exibir na sua rotina atual"
           >
             <SlidersHorizontal className="w-3.5 h-3.5 text-brand-primary" />
             <span>Gerenciar no Config</span>
-            {hiddenCount > 0 && (
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-mono">
-                {hiddenCount} ocultos
-              </span>
-            )}
           </button>
 
           <button
@@ -289,7 +243,6 @@ export default function RoutinesView({
           {displayedRoutines.map((routine) => {
             const isSelected = activeRoutine?.id === routine.id;
             const hasCritical = routine.criticalCount > 0;
-            const isHidden = hiddenRoutineIds.includes(routine.id);
 
             return (
               <div
@@ -304,7 +257,7 @@ export default function RoutinesView({
                     : 'bg-brand-surface border-brand-border hover:border-white/20 hover:bg-white/5'
                 }`}
               >
-                {/* Routine Tag (e.g. A, B, C) badge & Hide Action */}
+                {/* Routine Tag (e.g. A, B, C) badge */}
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold font-mono shrink-0 ${
@@ -333,22 +286,6 @@ export default function RoutinesView({
                       </div>
                     </div>
                   </div>
-
-                  {/* Hide/Restore Button */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onToggleHideRoutine?.(routine.id);
-                    }}
-                    className={`p-1.5 rounded-lg border transition-all shrink-0 ${
-                      isHidden
-                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/30 hover:bg-amber-500/30'
-                        : 'bg-white/5 text-white/40 border-white/5 hover:text-rose-300 hover:bg-rose-500/15 hover:border-rose-500/30'
-                    }`}
-                    title={isHidden ? 'Restaurar para a rotina atual' : 'Ocultar este treino da rotina atual'}
-                  >
-                    {isHidden ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-                  </button>
                 </div>
 
                 {/* Badges row: Official Hevy / Beginner / Status */}
@@ -610,28 +547,6 @@ export default function RoutinesView({
                     <h3 className="text-2xl font-bold text-white tracking-tight text-wrap-safe">
                       {activeRoutine.title}
                     </h3>
-                    <button
-                      onClick={() => onToggleHideRoutine?.(activeRoutine.id)}
-                      className={`w-full sm:w-auto text-xs px-2.5 py-2 sm:py-1 rounded-lg border transition-colors flex items-center justify-center gap-1.5 ${
-                        hiddenRoutineIds.includes(activeRoutine.id)
-                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-                          : 'bg-white/5 text-white/40 hover:text-rose-300 hover:bg-rose-500/10 border-white/5'
-                      }`}
-                      title="Ocultar este treino da rotina atual"
-                    >
-                      {hiddenRoutineIds.includes(activeRoutine.id) ? (
-                        <>
-                          <Eye className="w-3 h-3" />
-                          <span>Ocultado (Restaurar)</span>
-                        </>
-                      ) : (
-                        <>
-                          <EyeOff className="w-3 h-3" />
-                          <span>Ocultar Treino</span>
-                        </>
-                      )}
-                    </button>
-
                     {onStartWorkout && (
                       <button
                         onClick={() => onStartWorkout(activeRoutine)}
@@ -862,136 +777,6 @@ export default function RoutinesView({
           </div>
         </div>
       )}
-
-      {/* MANAGE ROUTINES MODAL */}
-      <AnimatePresence>
-        {isManageModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-brand-surface border border-brand-border rounded-3xl p-6 max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl relative"
-            >
-              {/* Modal Header */}
-              <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-xl bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary">
-                    <SlidersHorizontal className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-white">Gerenciar Treinos da Minha Rotina</h3>
-                    <p className="text-xs text-white/50">
-                      Marque quais treinos fazem parte da sua rotina atual e oculte treinos iniciantes ou antigos.
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setIsManageModalOpen(false)}
-                  className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Quick Preset Buttons */}
-              <div className="flex flex-wrap gap-2 mb-4 p-2.5 rounded-2xl bg-black/30 border border-white/5">
-                <button
-                  onClick={handleHideAllBeginners}
-                  className="px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-semibold transition-colors flex items-center gap-1.5"
-                >
-                  <EyeOff className="w-3.5 h-3.5" />
-                  <span>Ocultar Iniciantes e Antigos (&gt;60 dias)</span>
-                </button>
-
-                <button
-                  onClick={handleRestoreAll}
-                  className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10 text-xs font-semibold transition-colors flex items-center gap-1.5"
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                  <span>Exibir Todos os Treinos</span>
-                </button>
-              </div>
-
-              {/* Routines Checklist */}
-              <div className="overflow-y-auto space-y-2 pr-1 custom-scrollbar flex-1">
-                {allRoutines.map((r) => {
-                  const isHidden = hiddenRoutineIds.includes(r.id);
-                  const isIncludedInCurrent = !isHidden;
-
-                  return (
-                    <div
-                      key={r.id}
-                      onClick={() => onToggleHideRoutine?.(r.id)}
-                      className={`p-3.5 rounded-2xl border cursor-pointer transition-all flex items-center justify-between gap-3 ${
-                        isIncludedInCurrent
-                          ? 'bg-brand-primary/10 border-brand-primary/30 text-white'
-                          : 'bg-black/20 border-white/5 text-white/40 hover:bg-white/5'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className={`w-5 h-5 rounded-md flex items-center justify-center border transition-all ${
-                          isIncludedInCurrent
-                            ? 'bg-brand-primary text-brand-bg border-brand-primary'
-                            : 'border-white/20 bg-transparent'
-                        }`}>
-                          {isIncludedInCurrent && <CheckCircle2 className="w-3.5 h-3.5 stroke-[3]" />}
-                        </div>
-
-                        <span className="w-6 h-6 rounded-lg bg-white/10 text-xs font-mono font-bold flex items-center justify-center shrink-0">
-                          {r.tag}
-                        </span>
-
-                        <div className="min-w-0 flex-1 text-wrap-safe">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-bold text-wrap-safe text-white">{r.title}</span>
-                            {r.isHevyOfficialRoutine && (
-                              <span className="text-[9px] px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                                Oficial Hevy
-                              </span>
-                            )}
-                            {r.isBeginnerOrLegacy && (
-                              <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                                Iniciante / Antigo
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-[10px] text-white/40 font-mono block mt-0.5">
-                            {r.totalSessions} sessões • última {r.daysSinceLast < 999 ? `há ${r.daysSinceLast} dias` : '—'} • {r.totalExercises} exercícios
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="text-right shrink-0">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                          isIncludedInCurrent
-                            ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-                            : 'bg-white/5 text-white/40 border-white/10'
-                        }`}>
-                          {isIncludedInCurrent ? 'Ativo na Rotina' : 'Ocultado'}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Modal Footer */}
-              <div className="border-t border-white/10 pt-4 mt-4 flex justify-between items-center">
-                <span className="text-xs text-white/40">
-                  {allRoutines.length - hiddenCount} de {allRoutines.length} treinos ativos na rotina
-                </span>
-                <button
-                  onClick={() => setIsManageModalOpen(false)}
-                  className="btn-primary py-2 px-5 text-xs font-semibold"
-                >
-                  Concluído
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

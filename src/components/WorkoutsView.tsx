@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { calculateExercisePlateaus } from '../services/plateauCalculator';
+import { getRoutineStorageId } from '../services/routineIdentity';
 import { ExercisePlateau, PlateauStatus, WorkoutStagnationSummary } from '../types/plateau';
 
 interface WorkoutsViewProps {
@@ -99,11 +100,8 @@ export default function WorkoutsView({
   // Check if workout matches hidden routines list
   const isWorkoutHidden = (w: any): boolean => {
     if (!hiddenRoutineIds || hiddenRoutineIds.length === 0) return false;
-    const title = (w.title || '').toLowerCase().trim();
-    return hiddenRoutineIds.some((hid) => {
-      const hLower = hid.toLowerCase().trim();
-      return title.includes(hLower) || hLower.includes(title);
-    });
+    const routineId = getRoutineStorageId(w.title || '');
+    return hiddenRoutineIds.includes(routineId);
   };
 
   // Check if workout is part of active routine (performed in last 60 days AND not beginner/hidden)
@@ -402,7 +400,7 @@ export default function WorkoutsView({
       if (sortBy === 'duration_desc') return durB - durA;
       return dateB - dateA;
     });
-  }, [workouts, searchTerm, periodFilter, stagnationFilter, sortBy, workoutStagnationMap]);
+  }, [workouts, searchTerm, periodFilter, stagnationFilter, routineFilter, hideBeginners, sortBy, workoutStagnationMap, hiddenRoutineIds]);
 
   // Aggregate statistics
   const stats = useMemo(() => {
@@ -943,6 +941,7 @@ export default function WorkoutsView({
             const setsCount = Number(workout.totalSets) || exercises.reduce((acc, ex) => acc + (ex.sets?.length || 0), 0);
             const stag = workoutStagnationMap.get(workout.id);
             const isTopStagnated = highestStagnationWorkout?.workout.id === workout.id;
+            const syncStatus = workout.syncStatus as 'sent' | 'pending' | 'failed' | undefined;
 
             const stagBadge = stag && stag.totalExercisesAnalyzed > 0 
               ? getStagnationBadge(stag.avgStagnatedSessions, stag.criticalCount)
@@ -1004,6 +1003,17 @@ export default function WorkoutsView({
                         <span className="text-xs text-white/40 font-mono">
                           {format(workoutDate, 'EEEE, HH:mm', { locale: ptBR })}
                         </span>
+
+                        {syncStatus && syncStatus !== 'sent' && (
+                          <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border font-mono ${
+                            syncStatus === 'failed'
+                              ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                              : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                          }`}>
+                            <RefreshCw className="w-3 h-3" />
+                            {syncStatus === 'failed' ? 'Falhou Hevy' : 'Pendente Hevy'}
+                          </span>
+                        )}
                       </div>
 
                       {/* Stagnation sub-summary line */}

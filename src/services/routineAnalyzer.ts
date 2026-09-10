@@ -1,5 +1,6 @@
 import { ExercisePlateau, PlateauStatus, RoutineExercise, RoutineSplit } from '../types/plateau';
 import { calculateExercisePlateaus } from './plateauCalculator';
+import { getRoutineStorageId, normalizeRoutineTitle } from './routineIdentity';
 
 /**
  * Extracts a clean tag from routine title, like "A", "B", "C", "D", "E", or "PPL"
@@ -99,14 +100,16 @@ export function analyzeRoutineSplits(
   precalculatedPlateaus?: ExercisePlateau[],
   hevyRoutines?: any[]
 ): RoutineSplit[] {
-  if (!workouts || workouts.length === 0) {
+  if ((!workouts || workouts.length === 0) && (!hevyRoutines || hevyRoutines.length === 0)) {
     return [];
   }
+
+  const workoutList = Array.isArray(workouts) ? workouts : [];
 
   // 1. Get global plateau map
   const plateaus = precalculatedPlateaus && precalculatedPlateaus.length > 0
     ? precalculatedPlateaus
-    : calculateExercisePlateaus(workouts);
+    : calculateExercisePlateaus(workoutList);
 
   const plateauByTemplateId = new Map<string, ExercisePlateau>();
   const plateauByTitle = new Map<string, ExercisePlateau>();
@@ -143,10 +146,10 @@ export function analyzeRoutineSplits(
 
   const groupMap = new Map<string, RoutineGroup>();
 
-  for (const w of workouts) {
+  for (const w of workoutList) {
     const rawTitle = (w.title || 'Treino Geral').trim();
     // Normalize to group variations if user names them slightly differently
-    const normalizedKey = rawTitle.toLowerCase().replace(/\s+/g, ' ');
+    const normalizedKey = normalizeRoutineTitle(rawTitle);
 
     let group = groupMap.get(normalizedKey);
     if (!group) {
@@ -323,13 +326,13 @@ export function analyzeRoutineSplits(
     const isBeginnerOrLegacy = checkIsBeginnerOrLegacy(
       group.rawTitle,
       daysSinceLast,
-      workouts.length > 5
+      workoutList.length > 5
     );
 
     const isActiveRoutine = !isBeginnerOrLegacy && (isHevyOfficial || daysSinceLast <= 60);
 
     routineSplits.push({
-      id: group.normalizedKey.replace(/[^a-z0-9]/gi, '_'),
+      id: getRoutineStorageId(group.rawTitle),
       title: group.rawTitle,
       tag: group.tag,
       totalSessions,
@@ -350,6 +353,89 @@ export function analyzeRoutineSplits(
       avgStuckSessions: avgStuck,
       mostStagnatedExercise: mostStagnated
     });
+  }
+
+  const existingRoutineTitles = new Set(routineSplits.map((routine) => normalizeRoutineTitle(routine.title)));
+  if (Array.isArray(hevyRoutines)) {
+    for (const hevyRoutine of hevyRoutines) {
+      const title = String(hevyRoutine?.title || hevyRoutine?.name || '').trim();
+      if (!title) continue;
+
+      const normalizedTitle = normalizeRoutineTitle(title);
+      const alreadyRepresented = Array.from(existingRoutineTitles).some((existing) => {
+        return existing === normalizedTitle || existing.includes(normalizedTitle) || normalizedTitle.includes(existing);
+      });
+      if (alreadyRepresented) continue;
+
+      const routineExercises: RoutineExercise[] = (hevyRoutine.exercises || []).map((ex: any, index: number) => {
+        const templateId = String(ex.exercise_template_id || ex.template_id || ex.id || ex.title || '').trim();
+        const title = String(ex.title || ex.name || 'Exercício').trim();
+        const plateau = getExercisePlateau(templateId, title);
+        const routineSets = Array.isArray(ex.sets) && ex.sets.length > 0 ? ex.sets : [];
+        const normalSets = routineSets.filter((s: any) => {
+          const type = String(s.type || s.set_type || '').toLowerCase().trim();
+          return type === 'normal' || !type;
+        });
+        const setSource = normalSets.length > 0 ? normalSets : routineSets;
+        const weights = setSource.map((s: any) => Number(s.weight_kg) || 0).filter((weight: number) => weight > 0);
+        const reps = setSource.map((s: any) => Number(s.reps) || 0).filter((rep: number) => rep > 0);
+        const lastWeightKg = plateau?.currentWeightKg || (weights.length > 0 ? weights[0] : 0);
+        const maxWeightKg = Math.max(lastWeightKg, ...weights, 0);
+        const lastReps = reps.length > 0 ? Math.round(reps.reduce((acc: number, rep: number) => acc + rep, 0) / reps.length) : 10;
+        const stuckSessions = plateau?.stuckSessions || 0;
+        const status: PlateauStatus = plateau?.status || (stuckSessions >= 6 ? 'critical' : stuckSessions >= 3 ? 'warning' : 'ok');
+
+        return {
+          templateId,
+          title,
+          order: index + 1,
+          lastWeightKg,
+          maxWeightKg,
+          lastSetsCount: routineSets.length || 3,
+          lastReps,
+          lastPerformedDate: plateau?.lastSessionDate || null,
+          stuckSessions,
+          plateauWeeks: plateau?.stuckWeeks || 0,
+          status,
+          suggestion: getPlateauSuggestion(title, stuckSessions, status),
+          frequency: 0,
+        };
+      });
+
+      const totalExercises = routineExercises.length;
+      const criticalCount = routineExercises.filter((exercise) => exercise.status === 'critical').length;
+      const warningCount = routineExercises.filter((exercise) => exercise.status === 'warning').length;
+      const okCount = routineExercises.filter((exercise) => exercise.status === 'ok').length;
+      const stagnatedCount = criticalCount + warningCount;
+      const mostStagnatedExercise = [...routineExercises].sort((a, b) => b.stuckSessions - a.stuckSessions)[0];
+      const isBeginnerOrLegacy = checkIsBeginnerOrLegacy(title, 0, false);
+
+      routineSplits.push({
+        id: getRoutineStorageId(title),
+        title,
+        tag: extractRoutineTag(title),
+        totalSessions: 0,
+        lastPerformedDate: null,
+        daysSinceLast: 999,
+        isActiveRoutine: !isBeginnerOrLegacy,
+        isBeginnerOrLegacy,
+        isHevyOfficialRoutine: true,
+        avgVolumeKg: 0,
+        avgDurationMin: 0,
+        exercises: routineExercises,
+        totalExercises,
+        stagnatedCount,
+        criticalCount,
+        warningCount,
+        okCount,
+        stagnationRate: totalExercises > 0 ? Math.round((stagnatedCount / totalExercises) * 1000) / 10 : 0,
+        avgStuckSessions: totalExercises > 0
+          ? Math.round((routineExercises.reduce((acc, exercise) => acc + exercise.stuckSessions, 0) / totalExercises) * 10) / 10
+          : 0,
+        mostStagnatedExercise: mostStagnatedExercise?.stuckSessions > 0 ? mostStagnatedExercise : undefined,
+      });
+      existingRoutineTitles.add(normalizedTitle);
+    }
   }
 
   // Sort routines intuitively:

@@ -45,6 +45,31 @@ function getUserStorageKey(userId: string, name: string) {
   return `hevy_${name}_${userId}`;
 }
 
+type WorkoutSyncStatus = 'sent' | 'pending' | 'failed';
+
+interface CompletedWorkoutPayload {
+  title: string;
+  description?: string;
+  start_time: string;
+  end_time: string;
+  is_private?: boolean;
+  exercises: {
+    exercise_template_id: string;
+    notes?: string;
+    sets: {
+      type?: string;
+      weight_kg?: number | null;
+      reps?: number | null;
+      rpe?: number | null;
+    }[];
+  }[];
+}
+
+const isHevyTemplateId = (templateId: string) => {
+  const id = String(templateId || '').trim();
+  return Boolean(id) && !id.startsWith('custom_') && !id.startsWith('act_');
+};
+
 interface DashboardProps {
   user: DashboardUser;
 }
@@ -91,6 +116,7 @@ export default function Dashboard({ user }: DashboardProps) {
   const [trackerSendError, setTrackerSendError] = useState<string | null>(null);
   const [trackerSuccessMsg, setTrackerSuccessMsg] = useState<string | null>(null);
   const [apiTemplates, setApiTemplates] = useState<ExerciseTemplateOption[]>([]);
+  const [retryingPendingSync, setRetryingPendingSync] = useState(false);
 
   useEffect(() => {
     fetchUserData();
@@ -144,6 +170,9 @@ export default function Dashboard({ user }: DashboardProps) {
     return routines.filter((routine) => !hiddenRoutineIds.includes(routine.id)).length;
   }, [routines, hiddenRoutineIds]);
   const settingsHiddenRoutineCount = Math.max(0, routines.length - settingsVisibleRoutineCount);
+  const pendingSyncWorkouts = useMemo(() => {
+    return workouts.filter((workout) => workout?.syncStatus === 'pending' || workout?.syncStatus === 'failed');
+  }, [workouts]);
 
   const availableTemplates = useMemo(() => {
     const fromWorkouts = extractExerciseTemplatesFromWorkouts(workouts);
@@ -233,7 +262,7 @@ export default function Dashboard({ user }: DashboardProps) {
         throw new Error('Nenhuma série foi marcada como concluída. Marque ao menos uma série antes de finalizar o treino.');
       }
 
-      const payload = {
+      const payload: CompletedWorkoutPayload = {
         title: session.title,
         description: customNotes || session.notes || 'Registrado pelo HevyPulse',
         start_time: session.startTime,
@@ -245,16 +274,24 @@ export default function Dashboard({ user }: DashboardProps) {
       let hevyResult: any = null;
       let hevySyncSuccess = false;
       let syncNotice = '';
+      let syncStatus: WorkoutSyncStatus = 'pending';
+      const hasUnsupportedTemplate = payload.exercises.some((exercise) => !isHevyTemplateId(exercise.exercise_template_id));
 
-      if (hevyApiKey && hevyApiKey.trim()) {
+      if (hasUnsupportedTemplate) {
+        syncStatus = 'pending';
+        syncNotice = 'Há exercício personalizado sem template oficial do Hevy; ajuste o exercício e reenvie depois';
+      } else if (hevyApiKey && hevyApiKey.trim()) {
         try {
           hevyResult = await postHevyWorkout(hevyApiKey, payload);
           hevySyncSuccess = true;
+          syncStatus = 'sent';
         } catch (apiErr: any) {
           console.warn('Aviso: falha na sincronização direta com a API do Hevy:', apiErr?.message || apiErr);
+          syncStatus = 'failed';
           syncNotice = apiErr.message || 'Falha ao sincronizar com a API do Hevy';
         }
       } else {
+        syncStatus = 'pending';
         syncNotice = 'Chave de API do Hevy não configurada';
       }
 
@@ -293,6 +330,9 @@ export default function Dashboard({ user }: DashboardProps) {
             })),
         })),
         createdAt: new Date().toISOString(),
+        syncStatus,
+        syncError: hevySyncSuccess ? null : syncNotice,
+        pendingHevyPayload: hevySyncSuccess ? undefined : payload,
       };
 
       const nextWorkouts = [localWorkout, ...workouts.filter((w) => String(w.id) !== String(workoutId))];
@@ -305,7 +345,7 @@ export default function Dashboard({ user }: DashboardProps) {
       if (hevySyncSuccess) {
         setTrackerSuccessMsg(`Treino "${session.title}" salvo com sucesso e enviado para o Hevy!`);
       } else {
-        setTrackerSuccessMsg(`Treino "${session.title}" salvo com sucesso no histórico local! (${syncNotice})`);
+        setTrackerSuccessMsg(`Treino "${session.title}" salvo no histórico local e marcado para reenvio. (${syncNotice})`);
       }
       setActiveTab('workouts');
       setTimeout(() => setTrackerSuccessMsg(null), 8000);
@@ -357,6 +397,93 @@ export default function Dashboard({ user }: DashboardProps) {
 
   const handleShowAllRoutines = () => {
     handleSetHiddenRoutines([]);
+  };
+
+  const handleRetryPendingSync = async () => {
+    const keyToUse = hevyApiKey.trim();
+    if (!keyToUse) {
+      setIsSettingsOpen(true);
+      setSyncError('Configure a API Key do Hevy para reenviar treinos pendentes.');
+      return;
+    }
+
+    if (pendingSyncWorkouts.length === 0) {
+      return;
+    }
+
+    setRetryingPendingSync(true);
+    setSyncError(null);
+    let nextWorkouts = [...workouts];
+    let successCount = 0;
+    let failedCount = 0;
+
+    for (const workout of pendingSyncWorkouts) {
+      const payload = workout.pendingHevyPayload as CompletedWorkoutPayload | undefined;
+      if (!payload) {
+        failedCount++;
+        nextWorkouts = nextWorkouts.map((item) => (
+          String(item.id) === String(workout.id)
+            ? { ...item, syncStatus: 'failed', syncError: 'Payload de reenvio não encontrado.' }
+            : item
+        ));
+        continue;
+      }
+
+      const hasUnsupportedTemplate = payload.exercises.some((exercise) => !isHevyTemplateId(exercise.exercise_template_id));
+      if (hasUnsupportedTemplate) {
+        failedCount++;
+        nextWorkouts = nextWorkouts.map((item) => (
+          String(item.id) === String(workout.id)
+            ? {
+                ...item,
+                syncStatus: 'pending',
+                syncError: 'Há exercício personalizado sem template oficial do Hevy.',
+              }
+            : item
+        ));
+        continue;
+      }
+
+      try {
+        const hevyResult = await postHevyWorkout(keyToUse, payload);
+        const hevyWorkoutId = String(hevyResult?.id || hevyResult?.workout?.id || workout.id);
+        nextWorkouts = nextWorkouts.map((item) => (
+          String(item.id) === String(workout.id)
+            ? {
+                ...item,
+                id: hevyWorkoutId,
+                hevyId: hevyWorkoutId,
+                syncStatus: 'sent',
+                syncError: null,
+                pendingHevyPayload: undefined,
+              }
+            : item
+        ));
+        successCount++;
+      } catch (error: any) {
+        failedCount++;
+        nextWorkouts = nextWorkouts.map((item) => (
+          String(item.id) === String(workout.id)
+            ? {
+                ...item,
+                syncStatus: 'failed',
+                syncError: error.message || 'Falha ao reenviar para o Hevy.',
+              }
+            : item
+        ));
+      }
+    }
+
+    setWorkouts(nextWorkouts);
+    writeLocalJson(getUserStorageKey(user.uid, 'workouts'), nextWorkouts);
+    setRetryingPendingSync(false);
+
+    if (failedCount > 0) {
+      setSyncError(`${successCount} treino(s) reenviado(s), ${failedCount} ainda pendente(s).`);
+    } else {
+      setTrackerSuccessMsg(`${successCount} treino(s) reenviado(s) para o Hevy.`);
+      setTimeout(() => setTrackerSuccessMsg(null), 6000);
+    }
   };
 
   const fetchUserData = async () => {
@@ -465,16 +592,28 @@ export default function Dashboard({ user }: DashboardProps) {
           totalSets: sets,
           exercises: workout.exercises || [],
           createdAt: new Date().toISOString(),
+          syncStatus: 'sent',
+          syncError: null,
         };
       });
 
-      setWorkouts(workoutsData);
-      writeLocalJson(getUserStorageKey(user.uid, 'workouts'), workoutsData);
+      const localWorkouts = readLocalJson<any[]>(getUserStorageKey(user.uid, 'workouts'), []);
+      const unsyncedLocalWorkouts = localWorkouts.filter((workout) => {
+        return workout?.syncStatus === 'pending' || workout?.syncStatus === 'failed';
+      });
+      const remoteIds = new Set(workoutsData.map((workout) => String(workout.id)));
+      const mergedWorkoutsData = [
+        ...unsyncedLocalWorkouts.filter((workout) => !remoteIds.has(String(workout.hevyId || workout.id))),
+        ...workoutsData,
+      ];
+
+      setWorkouts(mergedWorkoutsData);
+      writeLocalJson(getUserStorageKey(user.uid, 'workouts'), mergedWorkoutsData);
       setLastSyncedAt(result.syncedAt);
       localStorage.setItem(`hevy_last_synced_${user.uid}`, result.syncedAt);
 
-      if (workoutsData.length > 0) {
-        generateInsights(workoutsData);
+      if (mergedWorkoutsData.length > 0) {
+        generateInsights(mergedWorkoutsData);
       }
     } catch (error: any) {
       console.error("Sync Error:", error);
@@ -719,8 +858,6 @@ export default function Dashboard({ user }: DashboardProps) {
             plateaus={plateaus}
             hevyRoutines={hevyRoutines}
             hiddenRoutineIds={effectiveHiddenRoutineIds}
-            onToggleHideRoutine={handleToggleHideRoutine}
-            onSetHiddenRoutines={handleSetHiddenRoutines}
             onOpenSettings={() => setIsSettingsOpen(true)}
             onStartWorkout={handleStartWorkoutFromRoutine}
             onStartEmptyWorkout={handleStartEmptyWorkout}
@@ -1028,6 +1165,23 @@ export default function Dashboard({ user }: DashboardProps) {
                 {lastSyncedAt && (
                   <div className="p-3 rounded-xl bg-white/5 border border-white/5 text-xs text-white/60">
                     Última sincronização bem-sucedida: <strong className="text-white font-mono">{format(new Date(lastSyncedAt), 'dd/MM/yyyy HH:mm:ss')}</strong>
+                  </div>
+                )}
+
+                {pendingSyncWorkouts.length > 0 && (
+                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <strong className="text-amber-200">{pendingSyncWorkouts.length} treino(s) pendente(s)</strong>
+                      <span className="text-amber-100/70"> aguardando envio para o Hevy.</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRetryPendingSync}
+                      disabled={retryingPendingSync || !hevyApiKey.trim()}
+                      className="px-3 py-2 rounded-xl bg-amber-400 text-black text-xs font-extrabold disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-110 transition-all"
+                    >
+                      {retryingPendingSync ? 'Reenviando...' : 'Reenviar agora'}
+                    </button>
                   </div>
                 )}
 
