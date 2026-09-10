@@ -441,7 +441,7 @@ export default function ActiveWorkoutTracker({
   };
 
   return (
-    <div className={`flex flex-col w-full pb-36 animate-fadeIn ${isMobileHUDMode ? 'max-w-2xl mx-auto' : 'w-full'}`}>
+    <div className={`flex flex-col w-full pb-36 animate-fadeIn ${isMobileHUDMode ? 'max-w-2xl lg:max-w-none mx-auto' : 'w-full'}`}>
       
       {/* ─────────────────────────────────────────────────────────────
           STICKY TOP HUD (Mobile Gym Dashboard Header)
@@ -451,9 +451,9 @@ export default function ActiveWorkoutTracker({
       <header className="sticky mobile-sticky-top z-30 px-4 py-3 rounded-2xl md:rounded-3xl bg-brand-surface/95 backdrop-blur-xl border border-brand-border shadow-2xl mb-4 transition-all">
         
         {/* Top Mini Bar: Status, Live Timer, Controls */}
-        <div className="flex items-center justify-between gap-2.5">
+        <div className="flex items-center justify-between gap-2.5 flex-wrap">
           {/* Workout Live & Timer Badge */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 min-w-0 flex-wrap">
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
               <span className="text-[10px] font-black uppercase tracking-wider">AO VIVO</span>
@@ -481,7 +481,7 @@ export default function ActiveWorkoutTracker({
           </div>
 
           {/* Quick Action Buttons */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 ml-auto">
             {/* View Mode Switcher: Mobile HUD vs Expanded */}
             <button
               type="button"
@@ -533,10 +533,10 @@ export default function ActiveWorkoutTracker({
               type="text"
               value={session.title}
               onChange={(e) => onUpdateSession({ ...session, title: e.target.value })}
-              className="text-base md:text-lg font-black text-white bg-transparent border-b border-transparent hover:border-white/20 focus:border-brand-primary focus:outline-none py-0.5 truncate flex-1"
+              className="text-base md:text-lg font-black text-white bg-transparent border-b border-transparent hover:border-white/20 focus:border-brand-primary focus:outline-none py-0.5 flex-1 min-w-0"
               placeholder="Título do Treino"
             />
-            <div className="flex items-center gap-2 shrink-0 text-xs font-mono">
+            <div className="flex items-center justify-end gap-2 shrink-0 text-xs font-mono flex-wrap">
               <span className="text-white/40">Progresso:</span>
               <span className="font-bold text-emerald-400">{completedSets}</span>
               <span className="text-white/40">/ {totalSets} séries</span>
@@ -799,7 +799,7 @@ export default function ActiveWorkoutTracker({
                   <button
                     type="button"
                     onClick={() => toggleExerciseCollapse(exercise.id)}
-                    className="flex-1 flex items-start gap-2.5 text-left group cursor-pointer select-none"
+                    className="flex-1 flex items-start gap-2.5 text-left group cursor-pointer select-none min-w-0"
                   >
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <span className={`w-6 h-6 rounded-xl text-xs font-mono font-bold flex items-center justify-center shrink-0 border ${
@@ -815,9 +815,9 @@ export default function ActiveWorkoutTracker({
                         }`}
                       />
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1 text-wrap-safe">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-base md:text-lg font-bold text-white tracking-tight group-hover:text-brand-primary transition-colors">
+                        <h3 className="text-base md:text-lg font-bold text-white tracking-tight text-wrap-safe group-hover:text-brand-primary transition-colors">
                           {exercise.title}
                         </h3>
                         {/* Status Badges */}
@@ -840,7 +840,7 @@ export default function ActiveWorkoutTracker({
 
                       {/* Resumo quando recolhido */}
                       {isCollapsed ? (
-                        <div className="mt-1 flex items-center gap-2 text-xs text-white/60">
+                        <div className="mt-1 flex items-center gap-2 text-xs text-white/60 flex-wrap">
                           <span className="font-mono text-white/80">
                             {completedSetsCount} de {exercise.sets.length} séries concluídas
                           </span>
@@ -896,8 +896,8 @@ export default function ActiveWorkoutTracker({
                   <div className="mt-3 p-3 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-200 animate-fadeIn">
                     <div className="flex items-start gap-2.5">
                       <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                      <div className="text-xs flex-1">
-                        <div className="font-black text-rose-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <div className="text-xs flex-1 min-w-0 text-wrap-safe">
+                        <div className="font-black text-rose-300 uppercase tracking-wider flex items-center gap-1.5 flex-wrap">
                           <span>Estagnação Crítica</span>
                           <span className="font-mono font-bold text-white bg-rose-500/30 px-2 py-0.5 rounded-full text-[10px]">
                             {diag.stuckSessions} sessões travadas (6+)
@@ -920,7 +920,7 @@ export default function ActiveWorkoutTracker({
                   </div>
                 ) : !isCollapsed && isWarningPlateau ? (
                   <div className="mt-3 p-2.5 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-200 animate-fadeIn">
-                    <div className="flex items-center gap-2 text-xs">
+                    <div className="flex items-center gap-2 text-xs text-wrap-safe">
                       <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
                       <span>
                         <strong>Atenção ({diag.stuckSessions} sessões):</strong> Carga idêntica nas últimas 3-5 sessões. Tente +1 repetição na 1ª série ou microcarga (+1 kg).
@@ -954,7 +954,7 @@ export default function ActiveWorkoutTracker({
                     }`}
                   >
                     {/* Left: Set number, Type, and Previous History */}
-                    <div className="flex items-center justify-between sm:justify-start gap-3">
+                    <div className="flex items-center justify-between sm:justify-start gap-3 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className={`w-7 h-7 rounded-xl font-mono font-bold text-xs flex items-center justify-center shrink-0 ${
                           set.completed ? 'bg-emerald-500 text-black' : 'bg-white/10 text-white'
@@ -977,7 +977,7 @@ export default function ActiveWorkoutTracker({
                       </div>
 
                       {/* Historical previous marker */}
-                      <div className="text-[11px] font-mono text-white/50 bg-white/5 px-2 py-1 rounded-lg">
+                      <div className="text-[11px] font-mono text-white/50 bg-white/5 px-2 py-1 rounded-lg text-wrap-safe">
                         {set.previousWeightKg !== null && set.previousWeightKg !== undefined ? (
                           <span>
                             Anterior: <strong className="text-white/80">{set.previousWeightKg} kg</strong> × {set.previousReps || 10}
@@ -989,7 +989,7 @@ export default function ActiveWorkoutTracker({
                     </div>
 
                     {/* Center: Large Touch Load & Reps Adjusters */}
-                    <div className="flex items-center gap-3 justify-between sm:justify-end">
+                    <div className="flex items-center gap-3 justify-between sm:justify-end flex-wrap">
                       
                       {/* Weight Control */}
                       <div className="flex items-center gap-1">
@@ -1146,7 +1146,7 @@ export default function ActiveWorkoutTracker({
           STICKY BOTTOM FINISH BAR (Fixed Thumb Area)
           Always anchored within thumb reach on mobile
           ───────────────────────────────────────────────────────────── */}
-      <footer className="fixed mobile-fixed-bottom mobile-floating-panel lg:left-72 lg:right-8 z-40 animate-slideUp">
+      <footer className="fixed mobile-fixed-bottom mobile-floating-panel z-40 animate-slideUp">
         <div className="rounded-2xl md:rounded-3xl bg-brand-surface/95 backdrop-blur-xl border border-brand-primary/40 p-3.5 shadow-2xl shadow-black/90 flex items-center justify-between gap-3">
           {/* Summary Metric */}
           <div className="flex items-center gap-3">

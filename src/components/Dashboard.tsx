@@ -486,9 +486,9 @@ export default function Dashboard({ user }: DashboardProps) {
   }
 
   return (
-    <div className={`mobile-app-shell mobile-dashboard-shell flex flex-col lg:flex-row bg-brand-bg text-[#F5F5F7] lg:overflow-hidden mobile-safe-bottom ${activeTab === 'tracker' ? 'py-3 sm:py-4 lg:p-6 gap-3 lg:gap-6' : 'py-4 sm:py-5 lg:p-6 gap-5 lg:gap-6'}`}>
+    <div className={`mobile-app-shell mobile-dashboard-shell flex flex-col lg:flex-row bg-brand-bg text-[#F5F5F7] lg:h-[100dvh] lg:overflow-hidden mobile-safe-bottom ${activeTab === 'tracker' ? 'py-3 sm:py-4 lg:p-6 gap-3 lg:gap-6' : 'py-4 sm:py-5 lg:p-6 gap-5 lg:gap-6'}`}>
       {/* Left Sidebar: Navigation, Identity & API */}
-      <aside className={`mobile-content-frame lg:w-64 flex flex-col gap-4 lg:gap-6 lg:h-full shrink-0 ${activeTab === 'tracker' ? 'hidden lg:flex' : ''}`}>
+      <aside className={`mobile-content-frame mobile-sidebar-frame flex flex-col gap-4 lg:gap-6 lg:h-full shrink-0 ${activeTab === 'tracker' ? 'hidden lg:flex' : ''}`}>
         <div className="p-5 lg:p-6 rounded-[2rem] bg-brand-surface border border-brand-border flex flex-row lg:flex-col items-center text-left lg:text-center gap-4 lg:gap-0">
           <div className="w-14 h-14 lg:w-20 lg:h-20 rounded-full bg-gradient-to-tr from-brand-accent to-brand-primary p-1 lg:mb-4 shrink-0">
             <div className="w-full h-full rounded-full bg-brand-bg flex items-center justify-center overflow-hidden">
@@ -513,12 +513,12 @@ export default function Dashboard({ user }: DashboardProps) {
             <div className="text-[10px] uppercase tracking-[0.2em] text-white/30 font-bold">Status da API</div>
             <div className="flex items-center gap-2.5">
               <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${hevyApiKey ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.6)]' : 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.6)]'}`}></div>
-              <span className="text-xs font-medium truncate">
+              <span className="text-xs font-medium text-clamp-safe-2 text-wrap-safe">
                 {hevyApiKey ? 'Hevy API Conectada' : 'Chave não informada'}
               </span>
             </div>
             {lastSyncedAt && (
-              <div className="text-[10px] text-white/30 truncate">
+              <div className="text-[10px] text-white/30 text-clamp-safe-2 text-wrap-safe">
                 Sync: {format(new Date(lastSyncedAt), 'dd/MM HH:mm', { locale: ptBR })}
               </div>
             )}
@@ -657,7 +657,7 @@ export default function Dashboard({ user }: DashboardProps) {
       </aside>
 
       {/* Main Content Area */}
-      <main className="mobile-content-frame flex-1 flex flex-col overflow-y-visible lg:overflow-y-auto pr-0 lg:pr-2 custom-scrollbar min-w-0">
+      <main className="mobile-content-frame mobile-main-frame flex flex-col overflow-y-visible lg:overflow-y-auto pr-0 lg:pr-2 custom-scrollbar min-w-0">
         {/* Success Banner if Workout Sent */}
         {trackerSuccessMsg && (
           <div className="mb-4 p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 flex items-center justify-between gap-3 shadow-lg animate-fadeIn">
@@ -826,8 +826,8 @@ export default function Dashboard({ user }: DashboardProps) {
                       className="flex justify-between items-center py-2 border-b border-white/5 last:border-0 hover:bg-white/10 px-2 rounded-lg transition-colors cursor-pointer group"
                       title="Clique para abrir detalhes do treino"
                     >
-                      <div className="flex flex-col">
-                        <span className="text-sm text-white/80 group-hover:text-white font-medium truncate max-w-[140px]">{w.title}</span>
+                      <div className="flex flex-col min-w-0 text-wrap-safe">
+                        <span className="text-sm text-white/80 group-hover:text-white font-medium text-wrap-safe max-w-[12rem]">{w.title}</span>
                         <span className="text-[9px] text-white/30 uppercase">
                           {format(w.startTime?.toDate ? w.startTime.toDate() : new Date(w.startTime), 'dd MMM', { locale: ptBR })}
                         </span>

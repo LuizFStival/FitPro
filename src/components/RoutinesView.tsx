@@ -431,13 +431,13 @@ export default function RoutinesView({
                     }`}>
                       {routine.tag || 'T'}
                     </span>
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 flex-1 text-wrap-safe">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <h3 className="text-sm font-bold text-white truncate group-hover:text-brand-primary transition-colors">
+                        <h3 className="text-sm font-bold text-white text-wrap-safe group-hover:text-brand-primary transition-colors">
                           {routine.title}
                         </h3>
                       </div>
-                      <div className="flex items-center gap-2 text-[10px] text-white/40 font-mono mt-0.5">
+                      <div className="flex items-center gap-2 text-[10px] text-white/40 font-mono mt-0.5 flex-wrap">
                         <span>{routine.totalSessions} {routine.totalSessions === 1 ? 'sessão' : 'sessões'}</span>
                         {routine.daysSinceLast < 999 && (
                           <>
@@ -488,13 +488,13 @@ export default function RoutinesView({
                 </div>
 
                 {/* Stagnation Badge */}
-                <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-white/5">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mt-3 pt-2.5 border-t border-white/5">
                   <span className="text-[10px] text-white/50 font-mono">
                     {routine.totalExercises} exercícios
                   </span>
 
                   {routine.stagnatedCount > 0 ? (
-                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border font-bold ${
+                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border font-bold w-fit max-w-full text-wrap-safe ${
                       hasCritical
                         ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
                         : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
@@ -596,9 +596,9 @@ export default function RoutinesView({
                     {overallStats.mostStagnatedRoutine.stagnatedCount} de {overallStats.mostStagnatedRoutine.totalExercises} exercícios estagnados ({overallStats.mostStagnatedRoutine.stagnationRate}% da rotina).
                   </p>
                 </div>
-                <div className="mt-3 pt-3 border-t border-rose-500/20 text-xs font-mono text-rose-300 flex justify-between">
+                <div className="mt-3 pt-3 border-t border-rose-500/20 text-xs font-mono text-rose-300 flex flex-col sm:flex-row sm:justify-between gap-1">
                   <span>Exercício mais travado:</span>
-                  <strong className="text-white truncate max-w-[130px]">
+                  <strong className="text-white text-wrap-safe max-w-[13rem] sm:text-right">
                     {overallStats.mostStagnatedRoutine.mostStagnatedExercise?.title || '—'}
                   </strong>
                 </div>
@@ -1058,9 +1058,9 @@ export default function RoutinesView({
                           {r.tag}
                         </span>
 
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1 text-wrap-safe">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-bold truncate text-white">{r.title}</span>
+                            <span className="text-sm font-bold text-wrap-safe text-white">{r.title}</span>
                             {r.isHevyOfficialRoutine && (
                               <span className="text-[9px] px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
                                 Oficial Hevy

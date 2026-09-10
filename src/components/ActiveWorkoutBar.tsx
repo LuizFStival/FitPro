@@ -50,7 +50,7 @@ export default function ActiveWorkoutBar({
   }
 
   return (
-    <div className="fixed mobile-fixed-bottom mobile-floating-panel lg:left-72 lg:right-8 z-40 animate-slideUp">
+    <div className="fixed mobile-fixed-bottom mobile-floating-panel z-40 animate-slideUp">
       <div className="rounded-2xl bg-brand-surface/95 backdrop-blur-md border border-brand-primary/40 p-3 shadow-2xl shadow-black/80 flex items-center justify-between gap-3">
         {/* Left: Info */}
         <div className="flex items-center gap-3 min-w-0 cursor-pointer" onClick={onExpand}>
@@ -59,8 +59,8 @@ export default function ActiveWorkoutBar({
             <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-400 rounded-full border border-brand-surface" />
           </div>
 
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
+          <div className="min-w-0 text-wrap-safe">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[10px] uppercase font-bold text-emerald-400 tracking-wider">
                 Treino em Andamento
               </span>
@@ -68,7 +68,7 @@ export default function ActiveWorkoutBar({
                 • {completedSets}/{totalSets} séries
               </span>
             </div>
-            <h4 className="text-sm font-bold text-white truncate">{session.title}</h4>
+            <h4 className="text-sm font-bold text-white text-wrap-safe">{session.title}</h4>
           </div>
         </div>
 

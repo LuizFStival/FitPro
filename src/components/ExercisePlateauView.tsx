@@ -429,7 +429,7 @@ export default function ExercisePlateauView({
 
                         {/* Rotina / Treino a que pertence */}
                         <td className="py-4 px-6 text-white/70">
-                          <div className="text-xs font-medium max-w-[200px] truncate">
+                          <div className="text-xs font-medium max-w-[200px] text-wrap-safe">
                             {item.routineTitle}
                           </div>
                           <div className="text-[10px] text-white/30 mt-0.5">
@@ -535,7 +535,7 @@ export default function ExercisePlateauView({
                                       <span className="font-mono text-base font-bold text-white mt-1">
                                         {sess.weightKg} kg
                                       </span>
-                                      <span className="text-[9px] text-white/50 truncate max-w-[95px] mt-1">
+                                      <span className="text-[9px] text-white/50 text-wrap-safe max-w-[95px] mt-1">
                                         {sess.workoutTitle}
                                       </span>
                                       {isPartOfPlateau && (

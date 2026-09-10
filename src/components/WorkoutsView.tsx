@@ -647,7 +647,7 @@ export default function WorkoutsView({
 
                 <div className="p-3 rounded-xl bg-black/30 border border-white/5">
                   <span className="text-[9px] uppercase tracking-wider text-white/40 block font-bold">Mais Estagnado</span>
-                  <div className="text-xs font-semibold text-white truncate mt-1">
+                  <div className="text-xs font-semibold text-white text-wrap-safe mt-1">
                     {highestStagnationWorkout.summary.mostStagnatedExercise?.title || '—'}
                   </div>
                   <div className="text-[10px] text-rose-300/80 font-mono">
@@ -965,7 +965,7 @@ export default function WorkoutsView({
                   onClick={() => toggleExpand(workout.id)}
                   className="p-5 cursor-pointer flex flex-col lg:flex-row lg:items-center justify-between gap-4 select-none"
                 >
-                  <div className="flex items-start gap-4 min-w-0">
+                  <div className="flex items-start gap-4 min-w-0 flex-1">
                     <div className={`w-12 h-12 rounded-2xl flex flex-col items-center justify-center shrink-0 border ${
                       isTopStagnated 
                         ? 'bg-rose-500/15 border-rose-500/40 text-rose-300' 
@@ -979,9 +979,9 @@ export default function WorkoutsView({
                       </span>
                     </div>
 
-                    <div className="flex flex-col min-w-0">
+                    <div className="flex flex-col min-w-0 flex-1 text-wrap-safe">
                       <div className="flex items-center gap-2.5 flex-wrap">
-                        <h3 className="text-base font-bold text-white tracking-tight truncate">
+                        <h3 className="text-base font-bold text-white tracking-tight text-wrap-safe">
                           {workout.title || 'Treino Hevy'}
                         </h3>
 
@@ -1008,7 +1008,7 @@ export default function WorkoutsView({
 
                       {/* Stagnation sub-summary line */}
                       {stag && stag.totalExercisesAnalyzed > 0 && (
-                        <div className="flex items-center gap-3 mt-1.5 text-xs">
+                        <div className="flex items-center gap-3 mt-1.5 text-xs flex-wrap">
                           {stag.criticalCount > 0 && (
                             <span className="text-rose-400 font-semibold flex items-center gap-1">
                               <AlertOctagon className="w-3.5 h-3.5" />
@@ -1031,7 +1031,7 @@ export default function WorkoutsView({
                       )}
 
                       {workout.description && (
-                        <p className="text-xs text-white/60 line-clamp-1 mt-1 italic">
+                        <p className="text-xs text-white/60 text-wrap-safe mt-1 italic">
                           "{workout.description}"
                         </p>
                       )}
@@ -1050,10 +1050,10 @@ export default function WorkoutsView({
                             return (
                               <span
                                 key={exIdx}
-                                className="text-[11px] px-2 py-0.5 rounded-md bg-white/5 text-white/70 border border-white/5 flex items-center gap-1.5"
+                                className="text-[11px] px-2 py-0.5 rounded-md bg-white/5 text-white/70 border border-white/5 flex items-center gap-1.5 max-w-full text-wrap-safe"
                               >
                                 {exPlat && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColor}`}></span>}
-                                <span>{ex.title}</span>
+                                <span className="text-wrap-safe">{ex.title}</span>
                                 {exPlat && (
                                   <span className="text-white/40 font-mono">({exPlat.stuckSessions}s)</span>
                                 )}
