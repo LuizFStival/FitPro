@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Dumbbell, Activity, Zap, Settings, RefreshCw, TrendingUp, Info, Layers, AlertOctagon, ClipboardList, Play, CheckCircle2, X } from 'lucide-react';
+import { Dumbbell, Activity, Zap, Settings, RefreshCw, TrendingUp, Info, Layers, AlertOctagon, ClipboardList, Play, CheckCircle2, X, Eye, EyeOff, SlidersHorizontal } from 'lucide-react';
 import { motion } from 'motion/react';
 import { fetchAllHevyWorkouts, fetchHevyRoutines, postHevyWorkout, fetchExerciseTemplates } from '../services/hevyService';
 import { generateWorkoutInsights } from '../services/aiService';
@@ -69,6 +69,13 @@ export default function Dashboard({ user }: DashboardProps) {
       return [];
     }
   });
+  const [hasSeededAutoHiddenRoutines, setHasSeededAutoHiddenRoutines] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(getUserStorageKey(user.uid, 'hidden_routines_seeded')) === 'true';
+    } catch {
+      return false;
+    }
+  });
 
   // Active Workout Tracking State
   const [activeSession, setActiveSession] = useState<ActiveWorkoutSession | null>(() => {
@@ -97,12 +104,46 @@ export default function Dashboard({ user }: DashboardProps) {
       .filter((routine) => routine.isBeginnerOrLegacy || /\(iniciante\)\s*$/i.test(routine.title))
       .map((routine) => routine.id);
   }, [routines]);
+
+  useEffect(() => {
+    if (hasSeededAutoHiddenRoutines || autoHiddenRoutineIds.length === 0) {
+      return;
+    }
+
+    setHiddenRoutineIds((prev) => {
+      const next = Array.from(new Set([...prev, ...autoHiddenRoutineIds]));
+      try {
+        localStorage.setItem(getUserStorageKey(user.uid, 'hidden_routines'), JSON.stringify(next));
+        localStorage.setItem(getUserStorageKey(user.uid, 'hidden_routines_seeded'), 'true');
+      } catch (e) {
+        console.error(e);
+      }
+      return next;
+    });
+    setHasSeededAutoHiddenRoutines(true);
+  }, [autoHiddenRoutineIds, hasSeededAutoHiddenRoutines, user.uid]);
+
   const effectiveHiddenRoutineIds = useMemo(() => {
+    if (hasSeededAutoHiddenRoutines) {
+      return hiddenRoutineIds;
+    }
     return Array.from(new Set([...hiddenRoutineIds, ...autoHiddenRoutineIds]));
-  }, [hiddenRoutineIds, autoHiddenRoutineIds]);
+  }, [hiddenRoutineIds, autoHiddenRoutineIds, hasSeededAutoHiddenRoutines]);
   const launcherRoutines = useMemo(() => {
     return routines.filter((routine) => !effectiveHiddenRoutineIds.includes(routine.id));
   }, [routines, effectiveHiddenRoutineIds]);
+  const settingsRoutines = useMemo(() => {
+    return [...routines].sort((a, b) => {
+      const aHidden = hiddenRoutineIds.includes(a.id) ? 1 : 0;
+      const bHidden = hiddenRoutineIds.includes(b.id) ? 1 : 0;
+      if (aHidden !== bHidden) return aHidden - bHidden;
+      return (a.tag || a.title).localeCompare(b.tag || b.title, 'pt-BR', { numeric: true });
+    });
+  }, [routines, hiddenRoutineIds]);
+  const settingsVisibleRoutineCount = useMemo(() => {
+    return routines.filter((routine) => !hiddenRoutineIds.includes(routine.id)).length;
+  }, [routines, hiddenRoutineIds]);
+  const settingsHiddenRoutineCount = Math.max(0, routines.length - settingsVisibleRoutineCount);
 
   const availableTemplates = useMemo(() => {
     const fromWorkouts = extractExerciseTemplatesFromWorkouts(workouts);
@@ -278,12 +319,14 @@ export default function Dashboard({ user }: DashboardProps) {
   };
 
   const handleToggleHideRoutine = async (routineId: string) => {
+    setHasSeededAutoHiddenRoutines(true);
     setHiddenRoutineIds((prev) => {
       const next = prev.includes(routineId)
         ? prev.filter((id) => id !== routineId)
         : [...prev, routineId];
       try {
         localStorage.setItem(`hevy_hidden_routines_${user.uid}`, JSON.stringify(next));
+        localStorage.setItem(getUserStorageKey(user.uid, 'hidden_routines_seeded'), 'true');
       } catch (e) {
         console.error(e);
       }
@@ -292,12 +335,28 @@ export default function Dashboard({ user }: DashboardProps) {
   };
 
   const handleSetHiddenRoutines = async (routineIds: string[]) => {
+    setHasSeededAutoHiddenRoutines(true);
     setHiddenRoutineIds(routineIds);
     try {
       localStorage.setItem(`hevy_hidden_routines_${user.uid}`, JSON.stringify(routineIds));
+      localStorage.setItem(getUserStorageKey(user.uid, 'hidden_routines_seeded'), 'true');
     } catch (e) {
       console.error(e);
     }
+  };
+
+  const handleHideLegacyRoutines = () => {
+    const next = new Set<string>(hiddenRoutineIds);
+    routines.forEach((routine) => {
+      if (routine.isBeginnerOrLegacy || /\(iniciante\)\s*$/i.test(routine.title)) {
+        next.add(routine.id);
+      }
+    });
+    handleSetHiddenRoutines(Array.from(next));
+  };
+
+  const handleShowAllRoutines = () => {
+    handleSetHiddenRoutines([]);
   };
 
   const fetchUserData = async () => {
@@ -628,20 +687,11 @@ export default function Dashboard({ user }: DashboardProps) {
             </button>
 
             <button 
-              onClick={() => handleSync()}
-              disabled={syncing}
-              className="flex items-center gap-3 p-3 rounded-xl text-white/50 hover:text-white hover:bg-white/5 transition-all text-left disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin text-brand-primary' : ''}`} />
-              <span className="text-sm">{syncing ? 'Sincronizando...' : 'Sincronizar API'}</span>
-            </button>
-
-            <button 
               onClick={() => setIsSettingsOpen(true)}
               className="flex items-center gap-3 p-3 rounded-xl text-white/50 hover:text-white hover:bg-white/5 transition-all text-left"
             >
               <Settings className="w-4 h-4" />
-              <span className="text-sm">Configurações API</span>
+              <span className="text-sm">Configurações</span>
             </button>
           </nav>
 
@@ -695,8 +745,6 @@ export default function Dashboard({ user }: DashboardProps) {
             onToggleHideRoutine={handleToggleHideRoutine}
             onSetHiddenRoutines={handleSetHiddenRoutines}
             onOpenSettings={() => setIsSettingsOpen(true)}
-            onSync={() => handleSync()}
-            syncing={syncing}
             onStartWorkout={handleStartWorkoutFromRoutine}
             onStartEmptyWorkout={handleStartEmptyWorkout}
           />
@@ -897,54 +945,180 @@ export default function Dashboard({ user }: DashboardProps) {
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="glass-card w-full max-w-md bg-brand-surface shadow-2xl rounded-3xl border border-white/10"
+            className="glass-card w-full max-w-4xl max-h-[calc(100dvh-2rem)] bg-brand-surface shadow-2xl rounded-3xl border border-white/10 flex flex-col"
           >
-            <div className="p-6 border-b border-brand-border flex items-center justify-between">
+            <div className="p-5 sm:p-6 border-b border-brand-border flex items-start justify-between gap-4 shrink-0">
               <div>
-                <h3 className="font-bold text-xl text-white">Configuração da API Hevy</h3>
-                <p className="text-xs text-white/40 mt-0.5">Conecte sua conta para sincronização direta</p>
+                <h3 className="font-bold text-xl text-white">Configurações</h3>
+                <p className="text-xs text-white/40 mt-0.5">API, sincronização e visibilidade dos seus treinos</p>
               </div>
               <button 
                 onClick={() => setIsSettingsOpen(false)} 
-                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-colors"
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white flex items-center justify-center transition-colors shrink-0"
               >
                 ✕
               </button>
             </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
-                  Hevy API Key
-                </label>
-                <input 
-                  type="password"
-                  value={hevyApiKey}
-                  onChange={(e) => setHevyApiKey(e.target.value)}
-                  placeholder="hvy_..."
-                  className="w-full bg-brand-bg border border-brand-border rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:border-brand-primary outline-none transition-colors font-mono"
-                />
-                <p className="mt-2 text-[11px] text-gray-400 flex items-center gap-1.5 leading-relaxed">
-                  <Info className="w-3.5 h-3.5 text-brand-primary shrink-0" />
-                  Obtenha sua chave em <strong>Perfil &gt; Configurações &gt; API</strong> no aplicativo Hevy Pro.
-                </p>
-              </div>
-
-              {lastSyncedAt && (
-                <div className="p-3 rounded-xl bg-white/5 border border-white/5 text-xs text-white/60">
-                  Última sincronização bem-sucedida: <strong className="text-white font-mono">{format(new Date(lastSyncedAt), 'dd/MM/yyyy HH:mm:ss')}</strong>
+            <div className="p-5 sm:p-6 space-y-5 overflow-y-auto custom-scrollbar">
+              <section className="rounded-2xl bg-black/20 border border-white/5 p-4 sm:p-5 space-y-4">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div>
+                    <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                      <Settings className="w-4 h-4 text-brand-primary" />
+                      API Hevy
+                    </h4>
+                    <p className="text-[11px] text-white/40 mt-0.5">Salve sua chave e sincronize tudo por aqui.</p>
+                  </div>
+                  <span className={`text-[10px] font-mono px-2 py-1 rounded-full border ${
+                    hevyApiKey
+                      ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                      : 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                  }`}>
+                    {hevyApiKey ? 'Conectada' : 'Sem chave'}
+                  </span>
                 </div>
-              )}
 
-              <div className="pt-2">
-                <button 
-                  onClick={saveSettings}
-                  disabled={syncing}
-                  className="btn-primary w-full py-3 text-sm font-semibold flex items-center justify-center gap-2"
-                >
-                  <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
-                  <span>{syncing ? 'Sincronizando...' : 'Salvar e Sincronizar Histórico Completo'}</span>
-                </button>
-              </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">
+                    Hevy API Key
+                  </label>
+                  <input 
+                    type="password"
+                    value={hevyApiKey}
+                    onChange={(e) => setHevyApiKey(e.target.value)}
+                    placeholder="hvy_..."
+                    className="w-full bg-brand-bg border border-brand-border rounded-xl px-4 py-3 text-sm text-white placeholder-white/20 focus:border-brand-primary outline-none transition-colors font-mono"
+                  />
+                  <p className="mt-2 text-[11px] text-gray-400 flex items-start gap-1.5 leading-relaxed">
+                    <Info className="w-3.5 h-3.5 text-brand-primary shrink-0 mt-0.5" />
+                    <span>Obtenha sua chave em <strong>Perfil &gt; Configurações &gt; API</strong> no aplicativo Hevy Pro.</span>
+                  </p>
+                </div>
+
+                {lastSyncedAt && (
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/5 text-xs text-white/60">
+                    Última sincronização bem-sucedida: <strong className="text-white font-mono">{format(new Date(lastSyncedAt), 'dd/MM/yyyy HH:mm:ss')}</strong>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <button 
+                    onClick={saveSettings}
+                    disabled={syncing}
+                    className="btn-primary py-3 text-sm font-semibold flex items-center justify-center gap-2"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+                    <span>{syncing ? 'Sincronizando...' : 'Salvar e Sincronizar'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSync()}
+                    disabled={syncing || !hevyApiKey.trim()}
+                    className="py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 hover:text-white text-sm font-semibold flex items-center justify-center gap-2 transition-colors disabled:opacity-40"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin text-brand-primary' : 'text-brand-primary'}`} />
+                    <span>{syncing ? 'Sincronizando...' : 'Sincronizar agora'}</span>
+                  </button>
+                </div>
+              </section>
+
+              <section className="rounded-2xl bg-black/20 border border-white/5 p-4 sm:p-5 space-y-4">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div>
+                    <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                      <SlidersHorizontal className="w-4 h-4 text-brand-primary" />
+                      Treinos exibidos
+                    </h4>
+                    <p className="text-[11px] text-white/40 mt-0.5">
+                      Ative ou desative quais rotinas aparecem na aba Treinos e no início de treino.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px] font-mono">
+                    <span className="px-2 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                      {settingsVisibleRoutineCount} visíveis
+                    </span>
+                    <span className="px-2 py-1 rounded-full bg-white/5 text-white/50 border border-white/10">
+                      {settingsHiddenRoutineCount} ocultos
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={handleShowAllRoutines}
+                    disabled={routines.length === 0 || settingsHiddenRoutineCount === 0}
+                    className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-white/80 disabled:opacity-40 transition-colors"
+                  >
+                    Mostrar todos
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleHideLegacyRoutines}
+                    disabled={routines.length === 0}
+                    className="px-3 py-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/20 text-xs font-semibold text-amber-200 disabled:opacity-40 transition-colors"
+                  >
+                    Ocultar antigos/iniciantes
+                  </button>
+                </div>
+
+                {settingsRoutines.length === 0 ? (
+                  <div className="p-4 rounded-xl bg-white/5 border border-white/5 text-xs text-white/50">
+                    Nenhum treino carregado ainda. Sincronize a API para listar suas rotinas aqui.
+                  </div>
+                ) : (
+                  <div className="max-h-[22rem] overflow-y-auto custom-scrollbar pr-1 space-y-2">
+                    {settingsRoutines.map((routine) => {
+                      const isHidden = hiddenRoutineIds.includes(routine.id);
+                      return (
+                        <button
+                          key={routine.id}
+                          type="button"
+                          onClick={() => handleToggleHideRoutine(routine.id)}
+                          className={`w-full p-3 rounded-2xl border text-left transition-all flex items-start justify-between gap-3 ${
+                            isHidden
+                              ? 'bg-black/25 border-white/5 text-white/45 hover:text-white/70 hover:border-white/15'
+                              : 'bg-brand-primary/10 border-brand-primary/25 text-white hover:border-brand-primary/50'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3 min-w-0">
+                            <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-mono font-bold shrink-0 ${
+                              isHidden ? 'bg-white/5 text-white/40' : 'bg-brand-primary text-brand-bg'
+                            }`}>
+                              {routine.tag || 'T'}
+                            </span>
+                            <div className="min-w-0 text-wrap-safe">
+                              <div className="text-sm font-bold text-wrap-safe">{routine.title}</div>
+                              <div className="mt-1 flex items-center gap-2 flex-wrap text-[10px] text-white/40 font-mono">
+                                <span>{routine.totalExercises} exercícios</span>
+                                <span>{routine.totalSessions} {routine.totalSessions === 1 ? 'sessão' : 'sessões'}</span>
+                                {routine.isBeginnerOrLegacy && (
+                                  <span className="px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/25">
+                                    antigo/iniciante
+                                  </span>
+                                )}
+                                {routine.isActiveRoutine && !routine.isBeginnerOrLegacy && (
+                                  <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">
+                                    ativo
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <span className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-[10px] font-bold ${
+                            isHidden
+                              ? 'bg-white/5 text-white/50 border-white/10'
+                              : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                          }`}>
+                            {isHidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                            {isHidden ? 'Oculto' : 'Visível'}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
             </div>
           </motion.div>
         </div>

@@ -19,7 +19,6 @@ import {
   ChevronRight,
   ChevronDown,
   ChevronUp,
-  RefreshCw,
   Zap,
   Target,
   Eye,
@@ -45,8 +44,6 @@ interface RoutinesViewProps {
   onToggleHideRoutine?: (routineId: string) => void;
   onSetHiddenRoutines?: (routineIds: string[]) => void;
   onOpenSettings?: () => void;
-  onSync?: () => void;
-  syncing?: boolean;
   onStartWorkout?: (routine: RoutineSplit) => void;
   onStartEmptyWorkout?: () => void;
 }
@@ -59,8 +56,6 @@ export default function RoutinesView({
   onToggleHideRoutine,
   onSetHiddenRoutines,
   onOpenSettings,
-  onSync,
-  syncing = false,
   onStartWorkout,
   onStartEmptyWorkout
 }: RoutinesViewProps) {
@@ -267,12 +262,18 @@ export default function RoutinesView({
 
           {/* Button to Manage/Filter Routines */}
           <button
-            onClick={() => setIsManageModalOpen(true)}
+            onClick={() => {
+              if (onOpenSettings) {
+                onOpenSettings();
+              } else {
+                setIsManageModalOpen(true);
+              }
+            }}
             className="px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 bg-white/5 hover:bg-white/10 text-white/90 border border-white/10 transition-all hover:border-brand-primary/40"
             title="Gerenciar quais treinos exibir na sua rotina atual"
           >
             <SlidersHorizontal className="w-3.5 h-3.5 text-brand-primary" />
-            <span>Gerenciar Treinos</span>
+            <span>Gerenciar no Config</span>
             {hiddenCount > 0 && (
               <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 font-mono">
                 {hiddenCount} ocultos
@@ -291,17 +292,6 @@ export default function RoutinesView({
             <BarChart3 className="w-3.5 h-3.5" />
             <span>{showComparison ? 'Ocultar Comparativo' : 'Comparativo A vs B vs C'}</span>
           </button>
-
-          {onSync && (
-            <button
-              onClick={onSync}
-              disabled={syncing}
-              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white border border-white/5 text-xs transition-colors disabled:opacity-50"
-              title="Atualizar dados da API Hevy"
-            >
-              <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin text-brand-primary' : ''}`} />
-            </button>
-          )}
         </div>
       </div>
 
