@@ -64,36 +64,17 @@ export default function RoutinesView({
     return analyzeRoutineSplits(workouts, plateaus, hevyRoutines);
   }, [workouts, plateaus, hevyRoutines]);
 
-  // View Filter: 'current' (Minha Rotina Atual - default) | 'all' | 'hidden'
-  const [viewFilter, setViewFilter] = useState<'current' | 'all' | 'hidden'>('current');
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
 
-  // Filter routines according to current view mode
+  // The routines tab shows only the active/visible training split.
+  // Full visibility control lives in Configurações.
   const displayedRoutines = useMemo(() => {
     if (allRoutines.length === 0) return [];
 
-    if (viewFilter === 'hidden') {
-      return allRoutines.filter((r) => hiddenRoutineIds.includes(r.id));
-    }
-
-    if (viewFilter === 'current') {
-      const active = allRoutines.filter((r) => {
-        // Exclude explicitly hidden
-        if (hiddenRoutineIds.includes(r.id)) return false;
-        // Routine is active if performed recently and not classified as beginner/legacy
-        return r.isActiveRoutine;
-      });
-
-      // If filter leaves zero (e.g. all workouts are old), fallback to non-hidden routines
-      if (active.length === 0) {
-        return allRoutines.filter((r) => !hiddenRoutineIds.includes(r.id));
-      }
-      return active;
-    }
-
-    // 'all': Show all visible routines; hidden routines stay in the hidden tab
+    const active = allRoutines.filter((r) => !hiddenRoutineIds.includes(r.id) && r.isActiveRoutine);
+    if (active.length > 0) return active;
     return allRoutines.filter((r) => !hiddenRoutineIds.includes(r.id));
-  }, [allRoutines, viewFilter, hiddenRoutineIds]);
+  }, [allRoutines, hiddenRoutineIds]);
 
   // Selected routine state
   const [selectedRoutineId, setSelectedRoutineId] = useState<string>(() => {
@@ -180,14 +161,7 @@ export default function RoutinesView({
   }, [activeRoutine, exerciseFilter]);
 
   // Helper counts
-  const currentCount = useMemo(() => {
-    return allRoutines.filter((r) => !hiddenRoutineIds.includes(r.id) && r.isActiveRoutine).length;
-  }, [allRoutines, hiddenRoutineIds]);
-
   const hiddenCount = hiddenRoutineIds.length;
-  const legacyOrBeginnerCount = useMemo(() => {
-    return allRoutines.filter((r) => r.isBeginnerOrLegacy).length;
-  }, [allRoutines]);
 
   // Quick action to hide all beginner / legacy routines
   const handleHideAllBeginners = () => {
@@ -295,100 +269,19 @@ export default function RoutinesView({
         </div>
       </div>
 
-      {/* Routine View Filter Toolbar */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 rounded-2xl bg-brand-surface/80 border border-brand-border">
-        {/* Pills for Current vs All vs Hidden */}
-        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-black/40 border border-white/5 text-xs">
-          <button
-            onClick={() => setViewFilter('current')}
-            className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 font-medium ${
-              viewFilter === 'current'
-                ? 'bg-brand-primary text-brand-bg font-bold shadow-sm'
-                : 'text-white/60 hover:text-white'
-            }`}
-          >
-            <Sparkles className="w-3 h-3" />
-            <span>Minha Rotina Atual</span>
-            <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
-              viewFilter === 'current' ? 'bg-black/20 text-brand-bg font-bold' : 'bg-white/10 text-white/70'
-            }`}>
-              {currentCount}
-            </span>
-          </button>
-
-          <button
-            onClick={() => setViewFilter('all')}
-            className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 font-medium ${
-              viewFilter === 'all'
-                ? 'bg-white/15 text-white font-bold'
-                : 'text-white/60 hover:text-white'
-            }`}
-          >
-            <span>Todos os Treinos</span>
-            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-white/10 text-white/70">
-              {allRoutines.length}
-            </span>
-          </button>
-
-          {hiddenCount > 0 && (
-            <button
-              onClick={() => setViewFilter('hidden')}
-              className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 font-medium ${
-                viewFilter === 'hidden'
-                  ? 'bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30'
-                  : 'text-white/50 hover:text-amber-300'
-              }`}
-            >
-              <EyeOff className="w-3 h-3" />
-              <span>Ocultados</span>
-              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300">
-                {hiddenCount}
-              </span>
-            </button>
-          )}
-        </div>
-
-        {/* Quick Helper Badge */}
-        <div className="flex items-center gap-2 text-xs text-white/40">
-          {viewFilter === 'current' && (
-            <span className="inline-flex items-center gap-1.5 text-[11px] text-white/60">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-              Exibindo apenas treinos ativos da sua divisão atual
-              {legacyOrBeginnerCount > 0 && (
-                <span className="text-white/40">({legacyOrBeginnerCount} iniciantes/antigos filtrados)</span>
-              )}
-            </span>
-          )}
-          {viewFilter === 'all' && (
-            <span className="inline-flex items-center gap-1.5 text-[11px] text-white/60">
-              <Info className="w-3.5 h-3.5 text-white/40" />
-              Mostrando histórico completo de divisões registradas
-            </span>
-          )}
-          {viewFilter === 'hidden' && (
-            <span className="inline-flex items-center gap-1.5 text-[11px] text-amber-300">
-              <EyeOff className="w-3.5 h-3.5 text-amber-400" />
-              Treinos que você optou por ocultar da rotina ativa
-            </span>
-          )}
-        </div>
-      </div>
-
       {/* Routine Cards Grid (A, B, C, ...) */}
       {displayedRoutines.length === 0 ? (
         <div className="p-8 rounded-2xl bg-brand-surface border border-brand-border text-center">
           <Info className="w-8 h-8 text-white/30 mx-auto mb-2" />
-          <p className="text-sm text-white/70 font-semibold">Nenhum treino nesta categoria</p>
+          <p className="text-sm text-white/70 font-semibold">Nenhum treino ativo para exibir</p>
           <p className="text-xs text-white/40 mt-1">
-            {viewFilter === 'hidden' 
-              ? 'Você não tem nenhum treino ocultado no momento.' 
-              : 'Clique em "Todos os Treinos" para visualizar todo o seu histórico.'}
+            Abra Configurações para ativar os treinos que devem aparecer aqui.
           </p>
           <button
-            onClick={() => setViewFilter('all')}
+            onClick={onOpenSettings}
             className="mt-4 px-4 py-2 rounded-xl bg-white/10 text-xs text-white font-medium hover:bg-white/15 transition-colors"
           >
-            Ver Todos os Treinos
+            Abrir Configurações
           </button>
         </div>
       ) : (
@@ -707,19 +600,19 @@ export default function RoutinesView({
         <div className="rounded-[2rem] bg-brand-surface border border-brand-border p-6 space-y-6">
           {/* Header of Active Routine */}
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 border-b border-white/5 pb-6">
-            <div className="space-y-2">
-              <div className="flex items-center gap-3 flex-wrap">
+            <div className="space-y-2 min-w-0">
+              <div className="flex flex-col sm:flex-row sm:items-start gap-3">
                 <span className="w-9 h-9 rounded-xl bg-brand-primary text-brand-bg font-black text-base flex items-center justify-center font-mono shadow-md shadow-brand-primary/20">
                   {activeRoutine.tag}
                 </span>
-                <div>
-                  <div className="flex items-center gap-2.5">
-                    <h3 className="text-2xl font-bold text-white tracking-tight">
+                <div className="min-w-0 w-full">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
+                    <h3 className="text-2xl font-bold text-white tracking-tight text-wrap-safe">
                       {activeRoutine.title}
                     </h3>
                     <button
                       onClick={() => onToggleHideRoutine?.(activeRoutine.id)}
-                      className={`text-xs px-2.5 py-1 rounded-lg border transition-colors flex items-center gap-1.5 ${
+                      className={`w-full sm:w-auto text-xs px-2.5 py-2 sm:py-1 rounded-lg border transition-colors flex items-center justify-center gap-1.5 ${
                         hiddenRoutineIds.includes(activeRoutine.id)
                           ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
                           : 'bg-white/5 text-white/40 hover:text-rose-300 hover:bg-rose-500/10 border-white/5'
@@ -742,10 +635,11 @@ export default function RoutinesView({
                     {onStartWorkout && (
                       <button
                         onClick={() => onStartWorkout(activeRoutine)}
-                        className="px-3.5 py-1.5 rounded-xl bg-brand-primary text-brand-bg font-extrabold text-xs flex items-center gap-1.5 shadow-lg shadow-brand-primary/20 hover:brightness-110 transition-all cursor-pointer shrink-0"
+                        className="w-full sm:w-auto px-3.5 py-2 sm:py-1.5 rounded-xl bg-brand-primary text-brand-bg font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-brand-primary/20 hover:brightness-110 transition-all cursor-pointer shrink-0"
                       >
                         <Play className="w-3.5 h-3.5 fill-brand-bg" />
-                        <span>Iniciar Este Treino Agora</span>
+                        <span className="sm:hidden">Iniciar</span>
+                        <span className="hidden sm:inline">Iniciar Este Treino Agora</span>
                       </button>
                     )}
                   </div>

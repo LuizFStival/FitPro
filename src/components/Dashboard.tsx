@@ -547,7 +547,7 @@ export default function Dashboard({ user }: DashboardProps) {
   return (
     <div className={`mobile-app-shell mobile-dashboard-shell flex flex-col lg:flex-row bg-brand-bg text-[#F5F5F7] lg:h-[100dvh] lg:overflow-hidden mobile-safe-bottom ${activeTab === 'tracker' ? 'py-3 sm:py-4 lg:p-6 gap-3 lg:gap-6' : 'py-4 sm:py-5 lg:p-6 gap-5 lg:gap-6'}`}>
       {/* Left Sidebar: Navigation, Identity & API */}
-      <aside className={`mobile-content-frame mobile-sidebar-frame flex flex-col gap-4 lg:gap-6 lg:h-full shrink-0 ${activeTab === 'tracker' ? 'hidden lg:flex' : ''}`}>
+      <aside className="hidden mobile-content-frame mobile-sidebar-frame lg:flex flex-col gap-4 lg:gap-6 lg:h-full shrink-0">
         <div className="p-5 lg:p-6 rounded-[2rem] bg-brand-surface border border-brand-border flex flex-row lg:flex-col items-center text-left lg:text-center gap-4 lg:gap-0">
           <div className="w-14 h-14 lg:w-20 lg:h-20 rounded-full bg-gradient-to-tr from-brand-accent to-brand-primary p-1 lg:mb-4 shrink-0">
             <div className="w-full h-full rounded-full bg-brand-bg flex items-center justify-center overflow-hidden">
@@ -619,59 +619,44 @@ export default function Dashboard({ user }: DashboardProps) {
 
             <button 
               onClick={() => setActiveTab('routines')}
-              className={`flex items-center justify-between p-3 rounded-xl transition-all text-left group ${
+              className={`flex items-center p-3 rounded-xl transition-all text-left group ${
                 activeTab === 'routines' 
                   ? 'bg-white/10 text-white font-semibold border border-white/10' 
                   : 'text-white/50 hover:text-white hover:bg-white/5'
               }`}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 min-w-0">
                 <ClipboardList className={`w-4 h-4 ${activeTab === 'routines' ? 'text-brand-primary' : 'text-white/40'}`} />
-                <span className="text-sm">Treinos A, B, C</span>
+                <span className="text-sm whitespace-nowrap">Treinos A, B, C</span>
               </div>
-              {routines.length > 0 ? (
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-brand-primary/10 text-brand-primary border border-brand-primary/20 font-semibold">
-                  {launcherRoutines.length} {launcherRoutines.length === 1 ? 'rotina' : 'rotinas'}
-                </span>
-              ) : null}
             </button>
 
             <button 
               onClick={() => setActiveTab('workouts')}
-              className={`flex items-center justify-between p-3 rounded-xl transition-all text-left group ${
+              className={`flex items-center p-3 rounded-xl transition-all text-left group ${
                 activeTab === 'workouts' 
                   ? 'bg-white/10 text-white font-semibold border border-white/10' 
                   : 'text-white/50 hover:text-white hover:bg-white/5'
               }`}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 min-w-0">
                 <Dumbbell className={`w-4 h-4 ${activeTab === 'workouts' ? 'text-brand-primary' : 'text-white/40'}`} />
-                <span className="text-sm">Histórico de Treinos</span>
+                <span className="text-sm whitespace-nowrap">Histórico de Treinos</span>
               </div>
-              {workouts.length > 0 && (
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-white/70 border border-white/10 font-semibold">
-                  {workouts.length}
-                </span>
-              )}
             </button>
 
             <button 
               onClick={() => setActiveTab('plateau')}
-              className={`flex items-center justify-between p-3 rounded-xl transition-all text-left group ${
+              className={`flex items-center p-3 rounded-xl transition-all text-left group ${
                 activeTab === 'plateau' 
                   ? 'bg-white/10 text-white font-semibold border border-white/10' 
                   : 'text-white/50 hover:text-white hover:bg-white/5'
               }`}
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 min-w-0">
                 <Layers className={`w-4 h-4 ${activeTab === 'plateau' ? 'text-brand-primary' : 'text-white/40'}`} />
-                <span className="text-sm">Estagnação de Carga</span>
+                <span className="text-sm whitespace-nowrap">Estagnação</span>
               </div>
-              {criticalCount > 0 && (
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold">
-                  {criticalCount}
-                </span>
-              )}
             </button>
 
             <button 
@@ -695,14 +680,6 @@ export default function Dashboard({ user }: DashboardProps) {
             </button>
           </nav>
 
-          {/* Quick AI Quote */}
-          <div className="mt-auto hidden lg:block">
-            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/5">
-              <p className="text-[11px] text-white/40 leading-relaxed italic">
-                "{insights ? insights.split('\n')[0].replace(/^[*-]\s*/, '').slice(0, 75) + '...' : 'Monitore seus treinos para análises profundas de adaptação e força.'}"
-              </p>
-            </div>
-          </div>
         </div>
       </aside>
 
@@ -918,6 +895,59 @@ export default function Dashboard({ user }: DashboardProps) {
           </div>
         )}
       </main>
+
+      {!activeSession && activeTab !== 'tracker' && (
+        <nav className="lg:hidden fixed left-0 right-0 bottom-0 z-40 border-t border-white/10 bg-brand-surface/95 backdrop-blur-xl px-3 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <div className="mx-auto grid max-w-md grid-cols-5 gap-1">
+            <button
+              type="button"
+              onClick={() => setActiveTab('routines')}
+              className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-bold transition-colors ${
+                activeTab === 'routines' ? 'bg-brand-primary text-brand-bg' : 'text-white/55 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <ClipboardList className="w-4 h-4" />
+              <span>Treinos</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('plateau')}
+              className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-bold transition-colors ${
+                activeTab === 'plateau' ? 'bg-brand-primary text-brand-bg' : 'text-white/55 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <Layers className="w-4 h-4" />
+              <span>Platô</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsLauncherOpen(true)}
+              className="flex flex-col items-center justify-center gap-1 rounded-2xl bg-brand-primary px-2 py-2 text-[10px] font-black text-brand-bg shadow-lg shadow-brand-primary/20 transition-transform active:scale-95"
+            >
+              <Play className="w-4 h-4 fill-brand-bg" />
+              <span>Iniciar</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('workouts')}
+              className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-bold transition-colors ${
+                activeTab === 'workouts' ? 'bg-brand-primary text-brand-bg' : 'text-white/55 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <Dumbbell className="w-4 h-4" />
+              <span>Hist.</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsSettingsOpen(true)}
+              className="flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-bold text-white/55 transition-colors hover:text-white hover:bg-white/5"
+            >
+              <Settings className="w-4 h-4" />
+              <span>Config</span>
+            </button>
+          </div>
+        </nav>
+      )}
 
       {/* Persistent Floating Bottom Bar for Active Workout when Minimized */}
       {activeSession && activeTab !== 'tracker' && (

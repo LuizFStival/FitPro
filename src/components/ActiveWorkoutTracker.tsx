@@ -62,6 +62,15 @@ export default function ActiveWorkoutTracker({
   // Exercise card collapse state: exerciseId -> boolean (true = collapsed)
   const [collapsedExercises, setCollapsedExercises] = useState<Record<string, boolean>>({});
 
+  useEffect(() => {
+    const firstOpenIndex = session.exercises.findIndex((ex) => ex.sets.some((set) => !set.completed));
+    const next: Record<string, boolean> = {};
+    session.exercises.forEach((ex, index) => {
+      next[ex.id] = firstOpenIndex === -1 || index !== firstOpenIndex;
+    });
+    setCollapsedExercises(next);
+  }, [session.id, session.exercises.map((ex) => ex.id).join('|')]);
+
   // Mobile Focus HUD toggle (defaults to true for maximum gym ease)
   const [isMobileHUDMode, setIsMobileHUDMode] = useState(true);
 
@@ -319,6 +328,28 @@ export default function ActiveWorkoutTracker({
     onUpdateSession({ ...session, exercises: updatedExercises });
 
     if (newlyCompleted) {
+      const currentIndex = updatedExercises.findIndex((ex) => ex.id === exerciseId);
+      const currentExercise = updatedExercises[currentIndex];
+      const currentDone = Boolean(
+        currentExercise?.sets.length && currentExercise.sets.every((set) => set.completed)
+      );
+
+      if (currentDone) {
+        const nextIndex = updatedExercises.findIndex(
+          (ex, index) => index > currentIndex && ex.sets.some((set) => !set.completed)
+        );
+        setCollapsedExercises((prev) => ({
+          ...prev,
+          [exerciseId]: true,
+          ...(nextIndex >= 0 ? { [updatedExercises[nextIndex].id]: false } : {}),
+        }));
+      } else {
+        setCollapsedExercises((prev) => ({
+          ...prev,
+          [exerciseId]: false,
+        }));
+      }
+
       triggerHaptic(50);
       if (autoStartRest) {
         setRestSecondsLeft(restInitialSeconds);

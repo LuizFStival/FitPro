@@ -71,7 +71,7 @@
 }
 
 .mobile-safe-bottom {
-  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  padding-bottom: max(6.5rem, calc(5.5rem + env(safe-area-inset-bottom)));
 }
 
 .mobile-fixed-bottom {
@@ -109,6 +109,7 @@
 
   .mobile-dashboard-shell {
     padding-inline: 1.5rem;
+    padding-bottom: 1.5rem;
   }
 
   .mobile-floating-panel {
