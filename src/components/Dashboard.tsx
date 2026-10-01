@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Dumbbell, Activity, Zap, Settings, RefreshCw, TrendingUp, Info, Layers, AlertOctagon, ClipboardList, CheckCircle2, X, Eye, EyeOff, SlidersHorizontal } from 'lucide-react';
+import { Dumbbell, Activity, Settings, RefreshCw, Info, Layers, ClipboardList, CheckCircle2, X, Eye, EyeOff, SlidersHorizontal } from 'lucide-react';
 import { motion } from 'motion/react';
 import { fetchAllHevyWorkouts, fetchHevyRoutines, postHevyWorkout, fetchExerciseTemplates } from '../services/hevyService';
 import { generateWorkoutInsights } from '../services/aiService';
@@ -7,12 +7,12 @@ import { calculateExercisePlateaus } from '../services/plateauCalculator';
 import { analyzeRoutineSplits } from '../services/routineAnalyzer';
 import { extractExerciseTemplatesFromWorkouts } from '../services/activeWorkoutBuilder';
 import { ActiveWorkoutSession, ExerciseTemplateOption } from '../types/workoutTracker';
-import WorkoutChart from './WorkoutChart';
 import ExercisePlateauView from './ExercisePlateauView';
 import WorkoutsView from './WorkoutsView';
 import RoutinesView from './RoutinesView';
 import ActiveWorkoutTracker from './ActiveWorkoutTracker';
 import ActiveWorkoutBar from './ActiveWorkoutBar';
+import AnalyticsSummaryView from './AnalyticsSummaryView';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -117,7 +117,6 @@ export default function Dashboard({ user }: DashboardProps) {
   }, []);
 
   const plateaus = useMemo(() => calculateExercisePlateaus(workouts), [workouts]);
-  const criticalCount = useMemo(() => plateaus.filter(p => p.status === 'critical').length, [plateaus]);
   const routines = useMemo(() => analyzeRoutineSplits(workouts, plateaus, hevyRoutines), [workouts, plateaus, hevyRoutines]);
   const autoHiddenRoutineIds = useMemo(() => {
     return routines
@@ -613,33 +612,6 @@ export default function Dashboard({ user }: DashboardProps) {
     }
   };
 
-  const stats = [
-    { 
-      label: 'Score de Consistência', 
-      value: '94.8', 
-      icon: Zap, 
-      color: 'text-[#4FACFE]', 
-      sub: '92% da meta atingida', 
-      unit: '%' 
-    },
-    { 
-      label: 'Volume Recente', 
-      value: `${Math.round(workouts.slice(0, 7).reduce((acc, w) => acc + (w.totalVolume || 0), 0)).toLocaleString()}`, 
-      icon: TrendingUp, 
-      color: 'text-white', 
-      sub: 'últimas 7 sessões', 
-      unit: 'kg' 
-    },
-    { 
-      label: 'Frequência Média', 
-      value: Math.round((workouts.length / Math.max(1, Math.min(12, workouts.length / 3))) * 10) / 10, 
-      icon: Activity, 
-      color: 'text-white', 
-      sub: 'sessões / semana', 
-      unit: '' 
-    },
-  ];
-
   if (loading) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-brand-bg text-white">
@@ -860,148 +832,24 @@ export default function Dashboard({ user }: DashboardProps) {
             hasApiKey={Boolean(hevyApiKey)}
           />
         ) : (
-          <div className="flex flex-col gap-6 w-full pb-10">
-            {/* Critical Alert Callout if plateaus detected */}
-            {criticalCount > 0 && (
-              <div className="rounded-2xl bg-rose-500/10 border border-rose-500/30 p-4 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <AlertOctagon className="w-5 h-5 text-rose-400 shrink-0" />
-                  <div>
-                    <h5 className="text-sm font-semibold text-rose-300">
-                      {criticalCount} exercício(s) em Platô Crítico (6+ sessões sem aumento de carga)
-                    </h5>
-                    <p className="text-xs text-rose-200/60 mt-0.5">
-                      Sua taxa de progressão estagnou nestes exercícios. Considere deload ou ajuste de volume.
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setActiveTab('plateau')}
-                  className="shrink-0 px-3.5 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 text-xs font-semibold border border-rose-500/40 transition-colors"
-                >
-                  Ver Estagnação
-                </button>
-              </div>
-            )}
-
-            {/* Top Header Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-auto md:h-40 shrink-0">
-              {stats.map((stat, idx) => (
-                <motion.div 
-                  key={stat.label}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.1 }}
-                  className="rounded-[2rem] bg-brand-surface border border-brand-border p-6 flex flex-col justify-between"
-                >
-                  <span className="text-[10px] uppercase tracking-widest text-white/40 font-bold">{stat.label}</span>
-                  <div className="flex items-baseline gap-2">
-                    <span className={`text-4xl lg:text-5xl font-light leading-none tracking-tighter ${stat.color}`}>
-                      {stat.value}
-                    </span>
-                    <span className="text-lg text-white/20 uppercase">{stat.unit}</span>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="text-[11px] text-white/40 flex items-center gap-1">
-                      {stat.sub}
-                    </div>
-                    {stat.label === 'Score de Consistência' && (
-                      <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden">
-                        <div 
-                          className="bg-brand-primary h-full rounded-full shadow-[0_0_15px_rgba(79,172,254,0.4)]" 
-                          style={{ width: `${stat.value}%` }}
-                        ></div>
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-
-            {/* Central Chart Area */}
-            <div className="flex-1 min-h-[400px] rounded-[2rem] bg-brand-surface border border-brand-border p-8 flex flex-col">
-              <div className="flex justify-between items-center mb-8 shrink-0">
-                <div>
-                  <h3 className="text-lg font-medium tracking-tight">Análise de Progressão de Carga</h3>
-                  <p className="text-sm text-white/40">Volume Total • Janela das 10 Últimas Sessões</p>
-                </div>
-                <div className="flex gap-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-brand-primary"></div>
-                    <span className="text-xs text-white/60">Volume Total (kg)</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex-1 w-full min-h-0">
-                <WorkoutChart data={workouts} />
-              </div>
-            </div>
-
-            {/* Bottom Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 h-auto lg:h-56 shrink-0 mb-4">
-              <div className="lg:col-span-2 rounded-[2rem] bg-brand-surface border border-brand-border p-6 flex flex-col">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-[10px] uppercase tracking-[0.2em] text-white/30 font-bold">Sessões Recentes</h4>
-                  <button
-                    onClick={() => setActiveTab('workouts')}
-                    className="text-[11px] text-brand-primary hover:underline font-semibold"
-                  >
-                    Ver todas ({workouts.length})
-                  </button>
-                </div>
-                <div className="space-y-2 overflow-y-auto flex-1 pr-2 custom-scrollbar">
-                  {workouts.slice(0, 4).map((w, idx) => (
-                    <div 
-                      key={idx} 
-                      onClick={() => {
-                        setSelectedWorkoutId(w.id);
-                        setActiveTab('workouts');
-                      }}
-                      className="flex justify-between items-center py-2 border-b border-white/5 last:border-0 hover:bg-white/10 px-2 rounded-lg transition-colors cursor-pointer group"
-                      title="Clique para abrir detalhes do treino"
-                    >
-                      <div className="flex flex-col min-w-0 text-wrap-safe">
-                        <span className="text-sm text-white/80 group-hover:text-white font-medium text-wrap-safe max-w-[12rem]">{w.title}</span>
-                        <span className="text-[9px] text-white/30 uppercase">
-                          {format(w.startTime?.toDate ? w.startTime.toDate() : new Date(w.startTime), 'dd MMM', { locale: ptBR })}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-sm font-semibold text-emerald-400 font-mono">{Math.round(w.totalVolume).toLocaleString()} kg</span>
-                        <span className="text-xs text-white/20 group-hover:text-brand-primary">›</span>
-                      </div>
-                    </div>
-                  ))}
-                  {workouts.length === 0 && (
-                    <div className="text-xs text-white/20 italic p-4 text-center">Nenhum dado de treino sincronizado</div>
-                  )}
-                </div>
-              </div>
-
-              <div className="lg:col-span-3 rounded-[2rem] bg-gradient-to-br from-brand-surface to-brand-bg border border-white/10 p-6 flex flex-col overflow-hidden">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-2 h-2 rounded-full bg-brand-primary animate-pulse"></div>
-                  <h4 className="text-[10px] uppercase tracking-[0.2em] text-white/70 font-bold">Insights com IA</h4>
-                </div>
-                <div className="flex-1 overflow-y-auto text-sm text-white/80 leading-relaxed pr-2 custom-scrollbar">
-                  {insights ? (
-                    <div className="space-y-3">
-                      {insights.split('\n').filter(l => l.trim()).map((line, idx) => (
-                        <p key={idx}>{line.replace(/^[*-]\s*/, '')}</p>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-white/40 italic">Processando histórico para gerar diagnósticos de força e hipertrofia...</p>
-                  )}
-                </div>
-                <div className="mt-4 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-                  {['#PERFORMANCE', '#VOLUME', '#ADAPTAÇÃO'].map(tag => (
-                    <span key={tag} className="px-3 py-1 rounded-full bg-white/5 text-[9px] border border-white/5 whitespace-nowrap">{tag}</span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
+          <AnalyticsSummaryView
+            workouts={workouts}
+            plateaus={plateaus}
+            routines={routines}
+            hiddenRoutineIds={effectiveHiddenRoutineIds}
+            insights={insights}
+            lastSyncedAt={lastSyncedAt}
+            syncing={syncing}
+            hasApiKey={Boolean(hevyApiKey)}
+            onSync={() => handleSync()}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+            onOpenRoutines={() => setActiveTab('routines')}
+            onOpenPlateaus={() => setActiveTab('plateau')}
+            onOpenWorkouts={(workoutId?: string) => {
+              if (workoutId) setSelectedWorkoutId(workoutId);
+              setActiveTab('workouts');
+            }}
+          />
         )}
       </main>
 
