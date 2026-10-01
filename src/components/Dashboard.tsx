@@ -1,15 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Dumbbell, Activity, Zap, Settings, RefreshCw, TrendingUp, Info, Layers, AlertOctagon, ClipboardList, Play, CheckCircle2, X, Eye, EyeOff, SlidersHorizontal } from 'lucide-react';
+import { Dumbbell, Activity, Zap, Settings, RefreshCw, TrendingUp, Info, Layers, AlertOctagon, ClipboardList, CheckCircle2, X, Eye, EyeOff, SlidersHorizontal } from 'lucide-react';
 import { motion } from 'motion/react';
 import { fetchAllHevyWorkouts, fetchHevyRoutines, postHevyWorkout, fetchExerciseTemplates } from '../services/hevyService';
 import { generateWorkoutInsights } from '../services/aiService';
 import { calculateExercisePlateaus } from '../services/plateauCalculator';
 import { analyzeRoutineSplits } from '../services/routineAnalyzer';
-import {
-  buildSessionFromRoutineSplit,
-  buildEmptySession,
-  extractExerciseTemplatesFromWorkouts,
-} from '../services/activeWorkoutBuilder';
+import { extractExerciseTemplatesFromWorkouts } from '../services/activeWorkoutBuilder';
 import { ActiveWorkoutSession, ExerciseTemplateOption } from '../types/workoutTracker';
 import WorkoutChart from './WorkoutChart';
 import ExercisePlateauView from './ExercisePlateauView';
@@ -17,7 +13,6 @@ import WorkoutsView from './WorkoutsView';
 import RoutinesView from './RoutinesView';
 import ActiveWorkoutTracker from './ActiveWorkoutTracker';
 import ActiveWorkoutBar from './ActiveWorkoutBar';
-import WorkoutLauncherModal from './WorkoutLauncherModal';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -84,7 +79,7 @@ export default function Dashboard({ user }: DashboardProps) {
   const [syncError, setSyncError] = useState<string | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'routines' | 'workouts' | 'plateau' | 'performance' | 'tracker'>('routines');
+  const [activeTab, setActiveTab] = useState<'routines' | 'workouts' | 'plateau' | 'performance' | 'tracker'>('performance');
   const [selectedWorkoutId, setSelectedWorkoutId] = useState<string | null>(null);
   const [hevyRoutines, setHevyRoutines] = useState<any[]>([]);
   const [hiddenRoutineIds, setHiddenRoutineIds] = useState<string[]>(() => {
@@ -111,7 +106,6 @@ export default function Dashboard({ user }: DashboardProps) {
       return null;
     }
   });
-  const [isLauncherOpen, setIsLauncherOpen] = useState(false);
   const [isTrackerSending, setIsTrackerSending] = useState(false);
   const [trackerSendError, setTrackerSendError] = useState<string | null>(null);
   const [trackerSuccessMsg, setTrackerSuccessMsg] = useState<string | null>(null);
@@ -155,9 +149,6 @@ export default function Dashboard({ user }: DashboardProps) {
     }
     return Array.from(new Set([...hiddenRoutineIds, ...autoHiddenRoutineIds]));
   }, [hiddenRoutineIds, autoHiddenRoutineIds, hasSeededAutoHiddenRoutines]);
-  const launcherRoutines = useMemo(() => {
-    return routines.filter((routine) => !effectiveHiddenRoutineIds.includes(routine.id));
-  }, [routines, effectiveHiddenRoutineIds]);
   const settingsRoutines = useMemo(() => {
     return [...routines].sort((a, b) => {
       const aHidden = hiddenRoutineIds.includes(a.id) ? 1 : 0;
@@ -186,29 +177,6 @@ export default function Dashboard({ user }: DashboardProps) {
     }
     return Array.from(map.values()).sort((a, b) => a.title.localeCompare(b.title));
   }, [workouts, apiTemplates]);
-
-  // Workout Session Management Handlers
-  const handleStartWorkoutFromRoutine = (routine: any) => {
-    const session = buildSessionFromRoutineSplit(routine, plateaus);
-    setActiveSession(session);
-    try {
-      localStorage.setItem(`hevy_active_workout_${user.uid}`, JSON.stringify(session));
-    } catch (e) {
-      console.error(e);
-    }
-    setActiveTab('tracker');
-  };
-
-  const handleStartEmptyWorkout = () => {
-    const session = buildEmptySession('Treino Livre');
-    setActiveSession(session);
-    try {
-      localStorage.setItem(`hevy_active_workout_${user.uid}`, JSON.stringify(session));
-    } catch (e) {
-      console.error(e);
-    }
-    setActiveTab('tracker');
-  };
 
   const handleUpdateActiveSession = (updated: ActiveWorkoutSession) => {
     setActiveSession(updated);
@@ -724,13 +692,19 @@ export default function Dashboard({ user }: DashboardProps) {
           
           {/* Navigation Links */}
           <nav className="flex flex-col gap-1.5">
-            {/* Dedicated Start Workout CTA */}
             <button
-              onClick={() => setIsLauncherOpen(true)}
+              onClick={() => {
+                if (!hevyApiKey.trim()) {
+                  setIsSettingsOpen(true);
+                  return;
+                }
+                handleSync();
+              }}
+              disabled={syncing}
               className="flex items-center justify-center gap-2 p-3 rounded-2xl bg-brand-primary text-brand-bg font-black text-sm shadow-lg shadow-brand-primary/25 hover:brightness-110 transition-all cursor-pointer mb-1"
             >
-              <Play className="w-4 h-4 fill-brand-bg" />
-              <span>Iniciar Novo Treino</span>
+              <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+              <span>{syncing ? 'Sincronizando...' : hevyApiKey.trim() ? 'Sincronizar Hevy' : 'Conectar Hevy'}</span>
             </button>
 
             {/* Active Workout Session Link if Running */}
@@ -756,7 +730,19 @@ export default function Dashboard({ user }: DashboardProps) {
               </button>
             )}
 
-            <button 
+            <button
+              onClick={() => setActiveTab('performance')}
+              className={`flex items-center gap-3 p-3 rounded-xl transition-all text-left group ${
+                activeTab === 'performance'
+                  ? 'bg-white/10 text-white font-semibold border border-white/10'
+                  : 'text-white/50 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <Activity className={`w-4 h-4 ${activeTab === 'performance' ? 'text-brand-primary' : 'text-white/40'}`} />
+              <span className="text-sm">Painel Analytics</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('routines')}
               className={`flex items-center p-3 rounded-xl transition-all text-left group ${
                 activeTab === 'routines' 
@@ -766,7 +752,7 @@ export default function Dashboard({ user }: DashboardProps) {
             >
               <div className="flex items-center gap-3 min-w-0">
                 <ClipboardList className={`w-4 h-4 ${activeTab === 'routines' ? 'text-brand-primary' : 'text-white/40'}`} />
-                <span className="text-sm whitespace-nowrap">Treinos A, B, C</span>
+                <span className="text-sm whitespace-nowrap">Treino do Dia</span>
               </div>
             </button>
 
@@ -780,7 +766,7 @@ export default function Dashboard({ user }: DashboardProps) {
             >
               <div className="flex items-center gap-3 min-w-0">
                 <Dumbbell className={`w-4 h-4 ${activeTab === 'workouts' ? 'text-brand-primary' : 'text-white/40'}`} />
-                <span className="text-sm whitespace-nowrap">Histórico de Treinos</span>
+                <span className="text-sm whitespace-nowrap">Histórico Hevy</span>
               </div>
             </button>
 
@@ -796,18 +782,6 @@ export default function Dashboard({ user }: DashboardProps) {
                 <Layers className={`w-4 h-4 ${activeTab === 'plateau' ? 'text-brand-primary' : 'text-white/40'}`} />
                 <span className="text-sm whitespace-nowrap">Estagnação</span>
               </div>
-            </button>
-
-            <button 
-              onClick={() => setActiveTab('performance')}
-              className={`flex items-center gap-3 p-3 rounded-xl transition-all text-left group ${
-                activeTab === 'performance' 
-                  ? 'bg-white/10 text-white font-semibold border border-white/10' 
-                  : 'text-white/50 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <Activity className={`w-4 h-4 ${activeTab === 'performance' ? 'text-brand-primary' : 'text-white/40'}`} />
-              <span className="text-sm">Performance Hub</span>
             </button>
 
             <button 
@@ -859,8 +833,6 @@ export default function Dashboard({ user }: DashboardProps) {
             hevyRoutines={hevyRoutines}
             hiddenRoutineIds={effectiveHiddenRoutineIds}
             onOpenSettings={() => setIsSettingsOpen(true)}
-            onStartWorkout={handleStartWorkoutFromRoutine}
-            onStartEmptyWorkout={handleStartEmptyWorkout}
           />
         ) : activeTab === 'workouts' ? (
           <WorkoutsView
@@ -1038,6 +1010,16 @@ export default function Dashboard({ user }: DashboardProps) {
           <div className="mx-auto grid max-w-md grid-cols-5 gap-1">
             <button
               type="button"
+              onClick={() => setActiveTab('performance')}
+              className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-bold transition-colors ${
+                activeTab === 'performance' ? 'bg-brand-primary text-brand-bg' : 'text-white/55 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <Activity className="w-4 h-4" />
+              <span>Painel</span>
+            </button>
+            <button
+              type="button"
               onClick={() => setActiveTab('routines')}
               className={`flex flex-col items-center justify-center gap-1 rounded-2xl px-2 py-2 text-[10px] font-bold transition-colors ${
                 activeTab === 'routines' ? 'bg-brand-primary text-brand-bg' : 'text-white/55 hover:text-white hover:bg-white/5'
@@ -1055,14 +1037,6 @@ export default function Dashboard({ user }: DashboardProps) {
             >
               <Layers className="w-4 h-4" />
               <span>Platô</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsLauncherOpen(true)}
-              className="flex flex-col items-center justify-center gap-1 rounded-2xl bg-brand-primary px-2 py-2 text-[10px] font-black text-brand-bg shadow-lg shadow-brand-primary/20 transition-transform active:scale-95"
-            >
-              <Play className="w-4 h-4 fill-brand-bg" />
-              <span>Iniciar</span>
             </button>
             <button
               type="button"
@@ -1094,17 +1068,6 @@ export default function Dashboard({ user }: DashboardProps) {
           onFinishQuick={() => setActiveTab('tracker')}
         />
       )}
-
-      {/* Workout Launcher Modal */}
-      <WorkoutLauncherModal
-        isOpen={isLauncherOpen}
-        onClose={() => setIsLauncherOpen(false)}
-        routines={launcherRoutines}
-        onSelectRoutine={handleStartWorkoutFromRoutine}
-        onStartEmpty={handleStartEmptyWorkout}
-        hasActiveSession={Boolean(activeSession)}
-        onResumeActive={() => setActiveTab('tracker')}
-      />
 
       {/* Settings Modal */}
       {isSettingsOpen && (
@@ -1214,7 +1177,7 @@ export default function Dashboard({ user }: DashboardProps) {
                       Treinos exibidos
                     </h4>
                     <p className="text-[11px] text-white/40 mt-0.5">
-                      Ative ou desative quais rotinas aparecem na aba Treinos e no início de treino.
+                      Ative ou desative quais rotinas aparecem no painel de análise e no roteiro antes da academia.
                     </p>
                   </div>
                   <div className="flex items-center gap-2 text-[10px] font-mono">

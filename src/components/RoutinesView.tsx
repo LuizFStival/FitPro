@@ -22,8 +22,7 @@ import {
   Zap,
   Target,
   SlidersHorizontal,
-  Award,
-  Play
+  Award
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ExercisePlateau, RoutineExercise, RoutineSplit } from '../types/plateau';
@@ -35,8 +34,6 @@ interface RoutinesViewProps {
   hevyRoutines?: any[];
   hiddenRoutineIds?: string[];
   onOpenSettings?: () => void;
-  onStartWorkout?: (routine: RoutineSplit) => void;
-  onStartEmptyWorkout?: () => void;
 }
 
 export default function RoutinesView({
@@ -44,9 +41,7 @@ export default function RoutinesView({
   plateaus,
   hevyRoutines = [],
   hiddenRoutineIds = [],
-  onOpenSettings,
-  onStartWorkout,
-  onStartEmptyWorkout
+  onOpenSettings
 }: RoutinesViewProps) {
   // Analyze routines (Treino A, Treino B, Treino C, etc.)
   const allRoutines: RoutineSplit[] = useMemo(() => {
@@ -176,29 +171,18 @@ export default function RoutinesView({
               <Dumbbell className="w-4 h-4" />
             </div>
             <h2 className="text-xl font-bold tracking-tight text-white">
-              Meus Treinos (A, B, C) & Estagnação
+              Roteiro do Treino & Estagnação
             </h2>
             <span className="text-xs px-2.5 py-0.5 rounded-full bg-brand-primary/10 text-brand-primary border border-brand-primary/20 font-semibold font-mono">
               {displayedRoutines.length} {displayedRoutines.length === 1 ? 'rotina na visualização' : 'rotinas na visualização'}
             </span>
           </div>
           <p className="text-xs text-white/50 max-w-2xl leading-relaxed">
-            Consulte a composição de cada um dos seus treinos atuais (Treino A, B, C...), veja todos os exercícios cadastrados e identifique quantos e quais exercícios estão com carga estagnada.
+            Use esta tela antes de chegar na academia: veja o treino provável do dia, os exercícios que merecem atenção e registre a execução no Hevy. Depois sincronize para atualizar os alertas.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto shrink-0">
-          {onStartEmptyWorkout && (
-            <button
-              onClick={onStartEmptyWorkout}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 bg-brand-primary text-brand-bg shadow-md shadow-brand-primary/20 hover:brightness-110 transition-all cursor-pointer"
-              title="Iniciar um treino livre em branco"
-            >
-              <Play className="w-3.5 h-3.5 fill-brand-bg" />
-              <span>Novo Treino Livre</span>
-            </button>
-          )}
-
           {/* Button to Manage/Filter Routines */}
           <button
             onClick={onOpenSettings}
@@ -352,21 +336,6 @@ export default function RoutinesView({
                     />
                   )}
                 </div>
-
-                {/* Quick Start Workout Button */}
-                {onStartWorkout && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onStartWorkout(routine);
-                    }}
-                    className="w-full mt-3 py-2 rounded-xl bg-brand-primary text-brand-bg font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-brand-primary/20 hover:brightness-110 transition-all cursor-pointer"
-                  >
-                    <Play className="w-3.5 h-3.5 fill-brand-bg" />
-                    <span>Iniciar Este Treino</span>
-                  </button>
-                )}
 
                 {/* Active selection underline */}
                 {isSelected && (
@@ -547,16 +516,6 @@ export default function RoutinesView({
                     <h3 className="text-2xl font-bold text-white tracking-tight text-wrap-safe">
                       {activeRoutine.title}
                     </h3>
-                    {onStartWorkout && (
-                      <button
-                        onClick={() => onStartWorkout(activeRoutine)}
-                        className="w-full sm:w-auto px-3.5 py-2 sm:py-1.5 rounded-xl bg-brand-primary text-brand-bg font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-brand-primary/20 hover:brightness-110 transition-all cursor-pointer shrink-0"
-                      >
-                        <Play className="w-3.5 h-3.5 fill-brand-bg" />
-                        <span className="sm:hidden">Iniciar</span>
-                        <span className="hidden sm:inline">Iniciar Este Treino Agora</span>
-                      </button>
-                    )}
                   </div>
                   <div className="flex items-center gap-3 text-xs text-white/40 mt-1">
                     <span>Executado {activeRoutine.totalSessions} vezes</span>
