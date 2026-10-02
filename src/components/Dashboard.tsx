@@ -874,7 +874,7 @@ export default function Dashboard({ user }: DashboardProps) {
               }`}
             >
               <ClipboardList className="w-4 h-4" />
-              <span>Treinos</span>
+              <span>Hoje</span>
             </button>
             <button
               type="button"

@@ -162,47 +162,47 @@ export default function RoutinesView({
   }
 
   return (
-    <div className="flex flex-col gap-6 w-full pb-16">
+    <div className="flex flex-col gap-3 sm:gap-6 w-full pb-16">
       {/* Top Banner & Title */}
-      <div className="rounded-[2rem] bg-brand-surface border border-brand-border p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="rounded-2xl sm:rounded-[2rem] bg-brand-surface border border-brand-border p-4 sm:p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 sm:gap-4">
         <div>
           <div className="flex items-center gap-2.5 mb-1.5 flex-wrap">
-            <div className="w-8 h-8 rounded-xl bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary">
+            <div className="w-8 h-8 rounded-xl bg-brand-primary/10 border border-brand-primary/20 flex items-center justify-center text-brand-primary shrink-0">
               <Dumbbell className="w-4 h-4" />
             </div>
-            <h2 className="text-xl font-bold tracking-tight text-white">
-              Roteiro do Treino & Estagnação
+            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white">
+              Treino do Dia
             </h2>
-            <span className="text-xs px-2.5 py-0.5 rounded-full bg-brand-primary/10 text-brand-primary border border-brand-primary/20 font-semibold font-mono">
+            <span className="hidden sm:inline-flex text-xs px-2.5 py-0.5 rounded-full bg-brand-primary/10 text-brand-primary border border-brand-primary/20 font-semibold font-mono">
               {displayedRoutines.length} {displayedRoutines.length === 1 ? 'rotina na visualização' : 'rotinas na visualização'}
             </span>
           </div>
           <p className="text-xs text-white/50 max-w-2xl leading-relaxed">
-            Use esta tela antes de chegar na academia: veja o treino provável do dia, os exercícios que merecem atenção e registre a execução no Hevy. Depois sincronize para atualizar os alertas.
+            Escolha A/B/C, veja o foco do treino e abra o Hevy sabendo quais exercícios merecem atenção.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto shrink-0">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2.5 w-full md:w-auto shrink-0">
           {/* Button to Manage/Filter Routines */}
           <button
             onClick={onOpenSettings}
-            className="px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 bg-white/5 hover:bg-white/10 text-white/90 border border-white/10 transition-all hover:border-brand-primary/40"
+            className="px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-white/90 border border-white/10 transition-all hover:border-brand-primary/40"
             title="Gerenciar quais treinos exibir na sua rotina atual"
           >
             <SlidersHorizontal className="w-3.5 h-3.5 text-brand-primary" />
-            <span>Gerenciar no Config</span>
+            <span>Config</span>
           </button>
 
           <button
             onClick={() => setShowComparison(!showComparison)}
-            className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 border transition-all ${
+            className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 border transition-all ${
               showComparison 
                 ? 'bg-brand-primary text-brand-bg border-brand-primary font-bold' 
                 : 'bg-white/5 hover:bg-white/10 text-white/80 border-white/10'
             }`}
           >
             <BarChart3 className="w-3.5 h-3.5" />
-            <span>{showComparison ? 'Ocultar Comparativo' : 'Comparativo A vs B vs C'}</span>
+            <span>{showComparison ? 'Ocultar' : 'Comparar'}</span>
           </button>
         </div>
       </div>
@@ -223,7 +223,7 @@ export default function RoutinesView({
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+        <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-3 overflow-x-auto sm:overflow-visible no-scrollbar pb-1">
           {displayedRoutines.map((routine) => {
             const isSelected = activeRoutine?.id === routine.id;
             const hasCritical = routine.criticalCount > 0;
@@ -235,7 +235,7 @@ export default function RoutinesView({
                   setSelectedRoutineId(routine.id);
                   setShowComparison(false);
                 }}
-                className={`p-4 rounded-2xl border cursor-pointer transition-all duration-200 text-left relative overflow-hidden group select-none ${
+                className={`min-w-[12.5rem] sm:min-w-0 p-3 sm:p-4 rounded-2xl border cursor-pointer transition-all duration-200 text-left relative overflow-hidden group select-none ${
                   isSelected
                     ? 'bg-gradient-to-br from-brand-surface to-brand-surface/90 border-brand-primary shadow-lg shadow-brand-primary/10 ring-1 ring-brand-primary/30'
                     : 'bg-brand-surface border-brand-border hover:border-white/20 hover:bg-white/5'
@@ -253,7 +253,7 @@ export default function RoutinesView({
                     </span>
                     <div className="min-w-0 flex-1 text-wrap-safe">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <h3 className="text-sm font-bold text-white text-wrap-safe group-hover:text-brand-primary transition-colors">
+                        <h3 className="text-xs sm:text-sm font-bold text-white text-wrap-safe group-hover:text-brand-primary transition-colors">
                           {routine.title}
                         </h3>
                       </div>
@@ -503,9 +503,9 @@ export default function RoutinesView({
 
       {/* SELECTED ROUTINE DETAIL VIEW */}
       {activeRoutine && (
-        <div className="rounded-[2rem] bg-brand-surface border border-brand-border p-6 space-y-6">
+        <div className="rounded-2xl sm:rounded-[2rem] bg-brand-surface border border-brand-border p-4 sm:p-6 space-y-4 sm:space-y-6">
           {/* Header of Active Routine */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 border-b border-white/5 pb-6">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-5 border-b border-white/5 pb-4 sm:pb-6">
             <div className="space-y-2 min-w-0">
               <div className="flex flex-col sm:flex-row sm:items-start gap-3">
                 <span className="w-9 h-9 rounded-xl bg-brand-primary text-brand-bg font-black text-base flex items-center justify-center font-mono shadow-md shadow-brand-primary/20">
@@ -513,11 +513,11 @@ export default function RoutinesView({
                 </span>
                 <div className="min-w-0 w-full">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2.5">
-                    <h3 className="text-2xl font-bold text-white tracking-tight text-wrap-safe">
+                    <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight text-wrap-safe">
                       {activeRoutine.title}
                     </h3>
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-white/40 mt-1">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] sm:text-xs text-white/40 mt-1">
                     <span>Executado {activeRoutine.totalSessions} vezes</span>
                     {activeRoutine.lastPerformedDate && (
                       <>
@@ -531,13 +531,13 @@ export default function RoutinesView({
             </div>
 
             {/* Diagnostic Box for Active Routine */}
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="px-4 py-2.5 rounded-xl bg-black/30 border border-white/5 flex flex-col">
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-stretch sm:items-center gap-2 sm:gap-3">
+              <div className="px-3 sm:px-4 py-2.5 rounded-xl bg-black/30 border border-white/5 flex flex-col">
                 <span className="text-[9px] uppercase tracking-wider text-white/40 font-bold">Total de Exercícios</span>
                 <span className="text-lg font-bold text-white font-mono">{activeRoutine.totalExercises}</span>
               </div>
 
-              <div className="px-4 py-2.5 rounded-xl bg-black/30 border border-white/5 flex flex-col">
+              <div className="px-3 sm:px-4 py-2.5 rounded-xl bg-black/30 border border-white/5 flex flex-col">
                 <span className="text-[9px] uppercase tracking-wider text-white/40 font-bold">Estagnados</span>
                 <div className="flex items-baseline gap-1">
                   <span className={`text-lg font-bold font-mono ${
@@ -549,12 +549,12 @@ export default function RoutinesView({
                 </div>
               </div>
 
-              <div className="px-4 py-2.5 rounded-xl bg-black/30 border border-white/5 flex flex-col">
+              <div className="px-3 sm:px-4 py-2.5 rounded-xl bg-black/30 border border-white/5 flex flex-col">
                 <span className="text-[9px] uppercase tracking-wider text-white/40 font-bold">Críticos (6+ sessões)</span>
                 <span className="text-lg font-bold text-rose-400 font-mono">{activeRoutine.criticalCount}</span>
               </div>
 
-              <div className="px-4 py-2.5 rounded-xl bg-black/30 border border-white/5 flex flex-col">
+              <div className="px-3 sm:px-4 py-2.5 rounded-xl bg-black/30 border border-white/5 flex flex-col">
                 <span className="text-[9px] uppercase tracking-wider text-white/40 font-bold">Volume Médio</span>
                 <span className="text-lg font-bold text-emerald-400 font-mono">
                   {activeRoutine.avgVolumeKg.toLocaleString()} kg
@@ -564,7 +564,7 @@ export default function RoutinesView({
           </div>
 
           {/* Stagnation Overview Alert Banner for this Routine */}
-          <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+          <div className={`p-3 sm:p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 ${
             activeRoutine.criticalCount > 0
               ? 'bg-rose-500/10 border-rose-500/30 text-rose-300'
               : activeRoutine.warningCount > 0
@@ -580,14 +580,14 @@ export default function RoutinesView({
                 <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
               )}
               <div>
-                <h4 className="text-sm font-bold text-white">
+                <h4 className="text-xs sm:text-sm font-bold text-white">
                   {activeRoutine.criticalCount > 0
                     ? `Atenção: ${activeRoutine.criticalCount} exercícios com carga travada há 6 ou mais treinos`
                     : activeRoutine.warningCount > 0
                     ? `Alerta: ${activeRoutine.warningCount} exercícios em estágio inicial de platô (3 a 5 treinos)`
                     : 'Excelente! Todos os exercícios desta rotina estão progredindo sem platô crítico'}
                 </h4>
-                <p className="text-xs opacity-80 mt-0.5">
+                <p className="text-[11px] sm:text-xs opacity-80 mt-0.5">
                   {activeRoutine.stagnatedCount > 0
                     ? `A média de estagnação neste treino é de ${activeRoutine.avgStuckSessions} sessões sem aumento de carga. Consulte abaixo as sugestões de ajuste.`
                     : 'Cargas mantendo consistência de sobrecarga progressiva em relação aos treinos anteriores.'}
@@ -596,10 +596,10 @@ export default function RoutinesView({
             </div>
 
             {/* Filter pills for exercises */}
-            <div className="flex items-center gap-1.5 bg-black/30 p-1 rounded-xl shrink-0 self-start sm:self-auto">
+            <div className="flex items-center gap-1.5 bg-black/30 p-1 rounded-xl shrink-0 self-stretch sm:self-auto overflow-x-auto no-scrollbar">
               <button
                 onClick={() => setExerciseFilter('all')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                className={`px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-medium whitespace-nowrap transition-all ${
                   exerciseFilter === 'all'
                     ? 'bg-white/20 text-white font-bold'
                     : 'text-white/50 hover:text-white'
@@ -609,7 +609,7 @@ export default function RoutinesView({
               </button>
               <button
                 onClick={() => setExerciseFilter('stagnated')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                className={`px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-medium whitespace-nowrap transition-all ${
                   exerciseFilter === 'stagnated'
                     ? 'bg-rose-500/30 text-rose-200 font-bold'
                     : 'text-white/50 hover:text-rose-300'
@@ -619,7 +619,7 @@ export default function RoutinesView({
               </button>
               <button
                 onClick={() => setExerciseFilter('critical')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                className={`px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-medium whitespace-nowrap transition-all ${
                   exerciseFilter === 'critical'
                     ? 'bg-rose-500/40 text-rose-200 font-bold'
                     : 'text-white/50 hover:text-rose-400'
@@ -629,7 +629,7 @@ export default function RoutinesView({
               </button>
               <button
                 onClick={() => setExerciseFilter('ok')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                className={`px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-medium whitespace-nowrap transition-all ${
                   exerciseFilter === 'ok'
                     ? 'bg-emerald-500/30 text-emerald-200 font-bold'
                     : 'text-white/50 hover:text-emerald-300'
@@ -641,10 +641,10 @@ export default function RoutinesView({
           </div>
 
           {/* EXERCISE LIST */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-xs text-white/50 px-2 font-mono">
+          <div className="space-y-2.5 sm:space-y-3">
+            <div className="flex items-center justify-between text-[11px] sm:text-xs text-white/50 px-1 sm:px-2 font-mono">
               <span>Exercícios do {activeRoutine.title} ({filteredExercises.length})</span>
-              <span>Carga Atual / Recorde / Séries</span>
+              <span className="hidden sm:inline">Carga Atual / Recorde / Séries</span>
             </div>
 
             {filteredExercises.length === 0 ? (
@@ -659,7 +659,7 @@ export default function RoutinesView({
                 return (
                   <div
                     key={`${ex.templateId}_${idx}`}
-                    className={`p-4 rounded-2xl border transition-all ${
+                    className={`p-3 sm:p-4 rounded-2xl border transition-all ${
                       isCritical
                         ? 'bg-rose-950/20 border-rose-500/30 hover:border-rose-500/50'
                         : isWarning
@@ -667,7 +667,7 @@ export default function RoutinesView({
                         : 'bg-black/20 border-white/5 hover:border-white/15'
                     }`}
                   >
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
                       {/* Left: Exercise Name, Order and Stagnation Badge */}
                       <div className="flex items-start gap-3">
                         <span className="w-6 h-6 rounded-lg bg-white/5 text-white/50 text-xs font-mono font-bold flex items-center justify-center shrink-0 mt-0.5">
@@ -675,7 +675,7 @@ export default function RoutinesView({
                         </span>
                         <div>
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h5 className="text-sm font-bold text-white">
+                            <h5 className="text-sm font-bold text-white text-wrap-safe">
                               {ex.title}
                             </h5>
                             {isCritical ? (
@@ -698,7 +698,7 @@ export default function RoutinesView({
 
                           {/* Actionable Plateau Tip */}
                           {ex.suggestion && (
-                            <p className="text-[11px] text-white/60 mt-1 max-w-xl leading-relaxed">
+                            <p className="text-[11px] text-white/60 mt-1 max-w-xl leading-relaxed text-wrap-safe">
                               💡 <span className="text-white/80 font-medium">Estratégia:</span> {ex.suggestion}
                             </p>
                           )}
@@ -706,22 +706,22 @@ export default function RoutinesView({
                       </div>
 
                       {/* Right: Load metrics and volume */}
-                      <div className="flex items-center gap-5 shrink-0 self-end md:self-center">
-                        <div className="text-right">
+                      <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center sm:gap-5 shrink-0 w-full sm:w-auto md:self-center">
+                        <div className="rounded-xl bg-black/25 sm:bg-transparent border border-white/5 sm:border-0 p-2 sm:p-0 text-left sm:text-right">
                           <span className="text-[9px] uppercase tracking-wider text-white/40 block font-bold">Carga Atual</span>
-                          <span className="text-base font-bold text-white font-mono">
+                          <span className="text-sm sm:text-base font-bold text-white font-mono">
                             {ex.lastWeightKg > 0 ? `${ex.lastWeightKg} kg` : 'Corporal'}
                           </span>
                         </div>
 
-                        <div className="text-right">
+                        <div className="rounded-xl bg-black/25 sm:bg-transparent border border-white/5 sm:border-0 p-2 sm:p-0 text-left sm:text-right">
                           <span className="text-[9px] uppercase tracking-wider text-white/40 block font-bold">Recorde (PR)</span>
-                          <span className="text-base font-bold text-brand-primary font-mono">
+                          <span className="text-sm sm:text-base font-bold text-brand-primary font-mono">
                             {ex.maxWeightKg > 0 ? `${ex.maxWeightKg} kg` : '—'}
                           </span>
                         </div>
 
-                        <div className="text-right pl-3 border-l border-white/5">
+                        <div className="rounded-xl bg-black/25 sm:bg-transparent border border-white/5 sm:border-l sm:border-y-0 sm:border-r-0 p-2 sm:pl-3 sm:p-0 text-left sm:text-right">
                           <span className="text-[9px] uppercase tracking-wider text-white/40 block font-bold">Volume Habitual</span>
                           <span className="text-xs text-white/70 font-mono">
                             {ex.lastSetsCount} × {ex.lastReps} reps

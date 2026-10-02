@@ -151,45 +151,45 @@ export default function AnalyticsSummaryView({
   ];
 
   return (
-    <div className="flex flex-col gap-6 w-full pb-12">
-      <section className="rounded-[2rem] bg-brand-surface border border-brand-border p-5 sm:p-6 flex flex-col xl:flex-row xl:items-center justify-between gap-5">
-        <div className="space-y-3">
+    <div className="flex flex-col gap-3 sm:gap-6 w-full pb-12">
+      <section className="rounded-2xl sm:rounded-[2rem] bg-brand-surface border border-brand-border p-4 sm:p-6 flex flex-col xl:flex-row xl:items-center justify-between gap-4 sm:gap-5">
+        <div className="space-y-2 sm:space-y-3">
           <div className="flex items-center gap-2.5 flex-wrap">
-            <span className="inline-flex items-center gap-2 rounded-full bg-brand-primary/10 text-brand-primary border border-brand-primary/20 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em]">
+            <span className="inline-flex items-center gap-2 rounded-full bg-brand-primary/10 text-brand-primary border border-brand-primary/20 px-2.5 sm:px-3 py-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.14em] sm:tracking-[0.18em]">
               Analytics Hevy
             </span>
             <span className="text-[11px] text-white/35 font-mono">Sync: {lastSyncLabel}</span>
           </div>
           <div>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">Resumo da Semana/Mês</h2>
-            <p className="text-sm text-white/45 mt-1 max-w-3xl leading-relaxed">
+            <h2 className="text-xl sm:text-3xl font-bold tracking-tight text-white">Resumo da Semana/Mês</h2>
+            <p className="hidden sm:block text-sm text-white/45 mt-1 max-w-3xl leading-relaxed">
               Use antes da academia para decidir o foco do treino e depois do Hevy para acompanhar evolução, volume e alertas de estagnação.
             </p>
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2.5 shrink-0">
+        <div className="grid grid-cols-2 sm:flex sm:flex-row gap-2.5 shrink-0">
           <button
             type="button"
             onClick={hasApiKey ? onSync : onOpenSettings}
             disabled={syncing}
-            className="px-4 py-3 rounded-2xl bg-brand-primary text-brand-bg font-extrabold text-sm flex items-center justify-center gap-2 disabled:opacity-60 hover:brightness-110 transition-all"
+            className="px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-brand-primary text-brand-bg font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 disabled:opacity-60 hover:brightness-110 transition-all"
           >
             <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
-            {syncing ? 'Sincronizando...' : hasApiKey ? 'Sincronizar Hevy' : 'Conectar Hevy'}
+            {syncing ? 'Sync...' : hasApiKey ? 'Sync Hevy' : 'Conectar'}
           </button>
           <button
             type="button"
             onClick={onOpenRoutines}
-            className="px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-white/85 font-bold text-sm flex items-center justify-center gap-2 hover:bg-white/10 transition-colors"
+            className="px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-white/5 border border-white/10 text-white/85 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 hover:bg-white/10 transition-colors"
           >
             <ClipboardList className="w-4 h-4 text-brand-primary" />
-            Ver treino do dia
+            Treino do dia
           </button>
         </div>
       </section>
 
-      <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
+      <section className="grid grid-cols-2 xl:grid-cols-4 gap-2.5 sm:gap-4">
         {headlineCards.map((card, index) => {
           const Icon = card.icon;
           return (
@@ -198,29 +198,29 @@ export default function AnalyticsSummaryView({
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className="rounded-2xl bg-brand-surface border border-brand-border p-4 sm:p-5 min-h-[8.5rem] flex flex-col justify-between"
+              className="rounded-2xl bg-brand-surface border border-brand-border p-3 sm:p-5 min-h-[6.5rem] sm:min-h-[8.5rem] flex flex-col justify-between"
             >
               <div className="flex items-center justify-between gap-3">
-                <span className="text-[10px] uppercase tracking-[0.18em] text-white/35 font-bold">{card.label}</span>
+                <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.12em] sm:tracking-[0.18em] text-white/35 font-bold">{card.label}</span>
                 <Icon className={`w-4 h-4 ${card.tone}`} />
               </div>
               <div>
                 <div className="flex items-baseline gap-2 flex-wrap">
-                  <span className={`text-3xl sm:text-4xl font-light tracking-tight ${card.tone}`}>{card.value}</span>
-                  {card.unit && <span className="text-xs text-white/35 font-semibold">{card.unit}</span>}
+                  <span className={`text-xl sm:text-4xl font-light tracking-tight ${card.tone}`}>{card.value}</span>
+                  {card.unit && <span className="text-[10px] sm:text-xs text-white/35 font-semibold">{card.unit}</span>}
                 </div>
-                <p className="text-[11px] text-white/40 mt-1">{card.detail}</p>
+                <p className="text-[10px] sm:text-[11px] text-white/40 mt-1 leading-tight">{card.detail}</p>
               </div>
             </motion.div>
           );
         })}
       </section>
 
-      <section className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-        <div className="xl:col-span-7 rounded-[2rem] bg-brand-surface border border-brand-border p-5 sm:p-6 min-h-[22rem] flex flex-col">
+      <section className="grid grid-cols-1 xl:grid-cols-12 gap-3 sm:gap-6">
+        <div className="order-2 xl:order-1 xl:col-span-7 rounded-2xl sm:rounded-[2rem] bg-brand-surface border border-brand-border p-4 sm:p-6 min-h-[17rem] sm:min-h-[22rem] flex flex-col">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
             <div>
-              <h3 className="text-lg font-bold text-white">Evolução de volume</h3>
+              <h3 className="text-base sm:text-lg font-bold text-white">Evolução de volume</h3>
               <p className="text-xs text-white/40">Últimas 10 sessões sincronizadas pelo Hevy</p>
             </div>
             {lastWorkout && (
@@ -233,28 +233,28 @@ export default function AnalyticsSummaryView({
               </button>
             )}
           </div>
-          <div className="flex-1 min-h-[16rem]">
+          <div className="flex-1 min-h-[12rem] sm:min-h-[16rem]">
             <WorkoutChart data={workouts} />
           </div>
         </div>
 
-        <div className="xl:col-span-5 rounded-[2rem] bg-brand-surface border border-brand-border p-5 sm:p-6 space-y-5">
+        <div className="order-1 xl:order-2 xl:col-span-5 rounded-2xl sm:rounded-[2rem] bg-brand-surface border border-brand-primary/25 p-4 sm:p-6 space-y-4 sm:space-y-5 shadow-lg shadow-brand-primary/5">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h3 className="text-lg font-bold text-white">Antes do próximo treino</h3>
-              <p className="text-xs text-white/40">Checklist rápido para abrir antes de chegar na academia.</p>
+              <h3 className="text-base sm:text-lg font-bold text-white">Antes do próximo treino</h3>
+              <p className="text-xs text-white/40">Abra isso antes de começar no Hevy.</p>
             </div>
             <Target className="w-5 h-5 text-brand-primary shrink-0 mt-1" />
           </div>
 
           {nextRoutine ? (
-            <div className="rounded-2xl bg-black/25 border border-white/5 p-4 space-y-3">
+            <div className="rounded-2xl bg-black/25 border border-white/5 p-3 sm:p-4 space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <span className="text-[10px] text-white/35 uppercase tracking-[0.16em] font-bold">Treino sugerido</span>
-                  <h4 className="text-base font-extrabold text-white text-wrap-safe mt-0.5">{nextRoutine.title}</h4>
+                  <span className="text-[9px] sm:text-[10px] text-brand-primary uppercase tracking-[0.16em] font-black">Treino sugerido hoje</span>
+                  <h4 className="text-sm sm:text-base font-extrabold text-white text-wrap-safe mt-0.5">{nextRoutine.title}</h4>
                 </div>
-                <span className="w-10 h-10 rounded-2xl bg-brand-primary text-brand-bg font-black flex items-center justify-center shrink-0">
+                <span className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-brand-primary text-brand-bg font-black flex items-center justify-center shrink-0">
                   {nextRoutine.tag || 'T'}
                 </span>
               </div>
@@ -276,9 +276,9 @@ export default function AnalyticsSummaryView({
 
               <div className="space-y-2">
                 {(nextRoutineAlerts.length > 0 ? nextRoutineAlerts : nextRoutine.exercises.slice(0, 4)).map((exercise) => (
-                  <div key={`${exercise.templateId}-${exercise.title}`} className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.03] border border-white/5 p-3">
+                  <div key={`${exercise.templateId}-${exercise.title}`} className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.03] border border-white/5 p-2.5 sm:p-3">
                     <div className="min-w-0">
-                      <div className="text-sm font-bold text-white text-wrap-safe">{exercise.title}</div>
+                      <div className="text-xs sm:text-sm font-bold text-white text-wrap-safe">{exercise.title}</div>
                       <div className="text-[10px] text-white/35">
                         {exercise.lastWeightKg > 0 ? `${exercise.lastWeightKg} kg` : 'carga corporal'} · {exercise.lastSetsCount} séries
                       </div>
@@ -313,8 +313,8 @@ export default function AnalyticsSummaryView({
         </div>
       </section>
 
-      <section className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="rounded-[2rem] bg-brand-surface border border-brand-border p-5 sm:p-6">
+      <section className="grid grid-cols-1 xl:grid-cols-3 gap-3 sm:gap-6">
+        <div className="rounded-2xl sm:rounded-[2rem] bg-brand-surface border border-brand-border p-4 sm:p-6">
           <div className="flex items-center justify-between gap-3 mb-4">
             <div>
               <h3 className="text-base font-bold text-white">Exercícios travados</h3>
@@ -354,7 +354,7 @@ export default function AnalyticsSummaryView({
           </div>
         </div>
 
-        <div className="rounded-[2rem] bg-brand-surface border border-brand-border p-5 sm:p-6">
+        <div className="rounded-2xl sm:rounded-[2rem] bg-brand-surface border border-brand-border p-4 sm:p-6">
           <div className="mb-4">
             <h3 className="text-base font-bold text-white">Melhores evoluções</h3>
             <p className="text-xs text-white/40">Aumentos de carga mais recentes detectados.</p>
@@ -381,7 +381,7 @@ export default function AnalyticsSummaryView({
           </div>
         </div>
 
-        <div className="rounded-[2rem] bg-gradient-to-br from-brand-surface to-brand-bg border border-white/10 p-5 sm:p-6 flex flex-col">
+        <div className="rounded-2xl sm:rounded-[2rem] bg-gradient-to-br from-brand-surface to-brand-bg border border-white/10 p-4 sm:p-6 flex flex-col">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-2 h-2 rounded-full bg-brand-primary animate-pulse"></div>
             <h3 className="text-base font-bold text-white">Leitura rápida</h3>
