@@ -31,6 +31,53 @@ function extractRoutineTag(title: string): string {
   return normalized.slice(0, 3).toUpperCase();
 }
 
+const EXERCISE_TITLE_ALIASES: Record<string, string> = {
+  'seated calf raise': 'Panturrilha Sentado (Máquina)',
+  'seated calf raise (machine)': 'Panturrilha Sentado (Máquina)',
+  'calf raise seated': 'Panturrilha Sentado (Máquina)',
+  'standing calf raise': 'Panturrilha em Pé (Máquina)',
+  'standing calf raise (machine)': 'Panturrilha em Pé (Máquina)',
+  'crunch (machine)': 'Abdominal (Máquina)',
+  'machine crunch': 'Abdominal (Máquina)',
+  'ab crunch machine': 'Abdominal (Máquina)',
+  'leg press': 'Leg Press 45º (Máquina)',
+  'leg press (machine)': 'Leg Press 45º (Máquina)',
+  'leg extension': 'Cadeira Extensora (Máquina)',
+  'leg extension (machine)': 'Cadeira Extensora (Máquina)',
+  'lying leg curl': 'Mesa Flexora (Máquina)',
+  'lying leg curl (machine)': 'Mesa Flexora (Máquina)',
+  'seated leg curl': 'Mesa Flexora (Máquina)',
+  'lunge (barbell)': 'Afundo (Barra)',
+  'barbell lunge': 'Afundo (Barra)',
+  'back extension': 'Extensão Lombar',
+  'hip abduction': 'Abdutora (Máquina)',
+  'hip adduction': 'Adutora (Máquina)',
+  'lat pulldown': 'Puxada Alta (Cabo)',
+  'lat pulldown (cable)': 'Puxada Alta (Cabo)',
+  'seated cable row': 'Remada Sentada (Cabo)',
+  'seated row (cable)': 'Remada Sentada (Cabo)',
+  'barbell curl': 'Rosca Direta (Barra)',
+  'hammer curl': 'Rosca Martelo Alternada',
+  'dumbbell hammer curl': 'Rosca Martelo Alternada',
+  'chest press (machine)': 'Supino Sentado (Máquina)',
+  'machine chest press': 'Supino Sentado (Máquina)',
+  'incline dumbbell press': 'Supino Inclinado (Halter)',
+  'pec deck': 'Crucifixo (Máquina)',
+  'triceps pushdown': 'Tríceps Corda',
+  'tricep pushdown': 'Tríceps Corda',
+  'shoulder press (machine)': 'Desenvolvimento (Máquina)',
+  'lateral raise (machine)': 'Elevação Lateral (Máquina)',
+};
+
+function normalizeExerciseTitle(title: string): string {
+  return title.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+function getDisplayExerciseTitle(title: string): string {
+  const cleanTitle = title.trim();
+  return EXERCISE_TITLE_ALIASES[normalizeExerciseTitle(cleanTitle)] || cleanTitle;
+}
+
 /**
  * Generates an actionable plateau-breaking suggestion tailored to the exercise
  */
@@ -369,7 +416,8 @@ export function analyzeRoutineSplits(
 
       const routineExercises: RoutineExercise[] = (hevyRoutine.exercises || []).map((ex: any, index: number) => {
         const templateId = String(ex.exercise_template_id || ex.template_id || ex.id || ex.title || '').trim();
-        const title = String(ex.title || ex.name || 'Exercício').trim();
+        const rawTitle = String(ex.title || ex.name || 'Exercício').trim();
+        const title = getDisplayExerciseTitle(rawTitle);
         const plateau = getExercisePlateau(templateId, title);
         const routineSets = Array.isArray(ex.sets) && ex.sets.length > 0 ? ex.sets : [];
         const normalSets = routineSets.filter((s: any) => {
@@ -405,10 +453,10 @@ export function analyzeRoutineSplits(
       if (representedRoutine && routineExercises.length > 0) {
         const existingExercises = representedRoutine.exercises || [];
         const findExistingExercise = (exercise: RoutineExercise) => {
-          const normalizedExerciseTitle = exercise.title.toLowerCase().trim();
+          const normalizedExerciseTitle = normalizeExerciseTitle(exercise.title);
           return existingExercises.find((existing) => {
             const sameTemplate = exercise.templateId && existing.templateId && exercise.templateId === existing.templateId;
-            const sameTitle = existing.title.toLowerCase().trim() === normalizedExerciseTitle;
+            const sameTitle = normalizeExerciseTitle(existing.title) === normalizedExerciseTitle;
             return sameTemplate || sameTitle;
           });
         };
