@@ -419,6 +419,8 @@ export function analyzeRoutineSplits(
 
           return {
             ...exercise,
+            templateId: existing.templateId || exercise.templateId,
+            title: existing.title || exercise.title,
             lastWeightKg: existing.lastWeightKg || exercise.lastWeightKg,
             maxWeightKg: Math.max(existing.maxWeightKg || 0, exercise.maxWeightKg || 0),
             lastSetsCount: existing.lastSetsCount || exercise.lastSetsCount,

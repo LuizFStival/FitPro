@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Dumbbell, Activity, Settings, RefreshCw, Info, Layers, ClipboardList, CheckCircle2, X, Eye, EyeOff, SlidersHorizontal } from 'lucide-react';
 import { motion } from 'motion/react';
 import { fetchAllHevyWorkouts, fetchHevyRoutines, postHevyWorkout, fetchExerciseTemplates } from '../services/hevyService';
@@ -65,6 +65,8 @@ const isHevyTemplateId = (templateId: string) => {
   return Boolean(id) && !id.startsWith('custom_') && !id.startsWith('act_');
 };
 
+const AUTO_SYNC_COOLDOWN_MS = 2 * 60 * 1000;
+
 interface DashboardProps {
   user: DashboardUser;
 }
@@ -111,6 +113,7 @@ export default function Dashboard({ user }: DashboardProps) {
   const [trackerSuccessMsg, setTrackerSuccessMsg] = useState<string | null>(null);
   const [apiTemplates, setApiTemplates] = useState<ExerciseTemplateOption[]>([]);
   const [retryingPendingSync, setRetryingPendingSync] = useState(false);
+  const lastAutoSyncAtRef = useRef(0);
 
   useEffect(() => {
     fetchUserData();
@@ -477,10 +480,6 @@ export default function Dashboard({ user }: DashboardProps) {
 
       if (workoutsData.length > 0) {
         generateInsights(workoutsData);
-      } else if (currentApiKey) {
-        setTimeout(() => {
-          handleSync(currentApiKey);
-        }, 100);
       }
 
       if (currentApiKey) {
@@ -505,6 +504,11 @@ export default function Dashboard({ user }: DashboardProps) {
             }
           })
           .catch(() => {});
+
+        lastAutoSyncAtRef.current = Date.now();
+        setTimeout(() => {
+          handleSync(currentApiKey);
+        }, 100);
       }
     } catch (error: any) {
       console.error("Error fetching data:", error);
@@ -596,6 +600,53 @@ export default function Dashboard({ user }: DashboardProps) {
       setSyncProgress(null);
     }
   };
+
+  const getSavedApiKey = () => {
+    return (
+      hevyApiKey ||
+      localStorage.getItem(getUserStorageKey(user.uid, 'api_key')) ||
+      localStorage.getItem('hevy_api_key') ||
+      ''
+    ).trim();
+  };
+
+  const triggerAutoSync = (force = false) => {
+    const keyToUse = getSavedApiKey();
+    if (!keyToUse || syncing) return;
+
+    const now = Date.now();
+    if (!force && now - lastAutoSyncAtRef.current < AUTO_SYNC_COOLDOWN_MS) {
+      return;
+    }
+
+    lastAutoSyncAtRef.current = now;
+    handleSync(keyToUse);
+  };
+
+  useEffect(() => {
+    if (loading || activeTab === 'tracker') return;
+    triggerAutoSync();
+  }, [activeTab, loading]);
+
+  useEffect(() => {
+    const handleFocus = () => {
+      triggerAutoSync();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        triggerAutoSync();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [hevyApiKey, syncing]);
 
   const saveSettings = async () => {
     try {
