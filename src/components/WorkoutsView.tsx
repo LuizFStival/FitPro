@@ -282,6 +282,8 @@ export default function WorkoutsView({
   const distinctRoutineTitles = useMemo(() => {
     const counts = new Map<string, { title: string; count: number; lastTime: number; isBeginner: boolean }>();
     for (const w of workouts) {
+      if (isWorkoutHidden(w)) continue;
+
       const rawTitle = (w.title || 'Treino Sem Nome').trim();
       const isBeg = isWorkoutBeginnerOrLegacy(w);
       const time = parseWorkoutDate(w).getTime();
@@ -303,16 +305,20 @@ export default function WorkoutsView({
         if (m && m[1]) tag = m[1].toUpperCase();
         return { ...r, tag };
       });
-  }, [workouts]);
+  }, [workouts, hiddenRoutineIds]);
 
   // Helper counts
   const beginnerCount = useMemo(() => {
     return workouts.filter((w) => isWorkoutBeginnerOrLegacy(w)).length;
   }, [workouts]);
 
-  const currentRoutineWorkoutsCount = useMemo(() => {
-    return workouts.filter((w) => isWorkoutInActiveRoutine(w)).length;
-  }, [workouts, hiddenRoutineIds]);
+  const visibleWorkoutsCount = useMemo(() => {
+    return workouts.filter((w) => {
+      if (isWorkoutHidden(w)) return false;
+      if (hideBeginners && isWorkoutBeginnerOrLegacy(w)) return false;
+      return true;
+    }).length;
+  }, [workouts, hiddenRoutineIds, hideBeginners]);
 
   // Filter and sort workouts
   const filteredWorkouts = useMemo(() => {
@@ -743,12 +749,7 @@ export default function WorkoutsView({
             }`}
           >
             <Sparkles className="w-3 h-3" />
-            <span>Minha Rotina Atual (Ativos)</span>
-            <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full ${
-              routineFilter === 'current_routine' ? 'bg-black/20 text-brand-bg font-bold' : 'bg-white/10 text-white/70'
-            }`}>
-              {currentRoutineWorkoutsCount}
-            </span>
+            <span>Treinos ativos visíveis</span>
           </button>
 
           {distinctRoutineTitles.map((rt) => (
@@ -777,7 +778,7 @@ export default function WorkoutsView({
                 : 'bg-white/5 text-white/60 hover:text-white border border-white/5 hover:bg-white/10'
             }`}
           >
-            Todos os Treinos ({workouts.length})
+            Todo histórico visível ({visibleWorkoutsCount})
           </button>
         </div>
 

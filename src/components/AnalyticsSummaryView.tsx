@@ -251,7 +251,6 @@ export default function AnalyticsSummaryView({
             <div className="rounded-2xl bg-black/25 border border-white/5 p-3 sm:p-4 space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <span className="text-[9px] sm:text-[10px] text-brand-primary uppercase tracking-[0.16em] font-black">Treino sugerido hoje</span>
                   <h4 className="text-sm sm:text-base font-extrabold text-white text-wrap-safe mt-0.5">{nextRoutine.title}</h4>
                 </div>
                 <span className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-brand-primary text-brand-bg font-black flex items-center justify-center shrink-0">

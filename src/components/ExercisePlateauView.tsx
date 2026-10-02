@@ -419,6 +419,9 @@ export default function ExercisePlateauView({
                           <div className="font-semibold text-white group-hover:text-brand-primary transition-colors">
                             {item.exerciseTitle}
                           </div>
+                          <div className="mt-1 inline-flex max-w-full items-center rounded-lg bg-brand-primary/10 border border-brand-primary/20 px-2 py-0.5 text-[10px] font-bold text-brand-primary text-wrap-safe">
+                            {item.routineTitle}
+                          </div>
                           <div className="text-[10px] font-mono text-white/30 tracking-tight flex items-center gap-1.5 mt-0.5">
                             <span className="bg-white/5 px-1.5 py-0.5 rounded border border-white/10">
                               ID: {item.exerciseTemplateId}

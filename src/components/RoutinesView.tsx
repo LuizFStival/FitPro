@@ -139,7 +139,7 @@ export default function RoutinesView({
         return ex.status === 'ok';
       }
       return true;
-    });
+    }).sort((a, b) => a.order - b.order);
   }, [activeRoutine, exerciseFilter]);
 
   if (allRoutines.length === 0) {

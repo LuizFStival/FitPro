@@ -362,10 +362,10 @@ export function analyzeRoutineSplits(
       if (!title) continue;
 
       const normalizedTitle = normalizeRoutineTitle(title);
-      const alreadyRepresented = Array.from(existingRoutineTitles).some((existing) => {
+      const representedRoutine = routineSplits.find((existingRoutine) => {
+        const existing = normalizeRoutineTitle(existingRoutine.title);
         return existing === normalizedTitle || existing.includes(normalizedTitle) || normalizedTitle.includes(existing);
       });
-      if (alreadyRepresented) continue;
 
       const routineExercises: RoutineExercise[] = (hevyRoutine.exercises || []).map((ex: any, index: number) => {
         const templateId = String(ex.exercise_template_id || ex.template_id || ex.id || ex.title || '').trim();
@@ -401,6 +401,63 @@ export function analyzeRoutineSplits(
           frequency: 0,
         };
       });
+
+      if (representedRoutine && routineExercises.length > 0) {
+        const existingExercises = representedRoutine.exercises || [];
+        const findExistingExercise = (exercise: RoutineExercise) => {
+          const normalizedExerciseTitle = exercise.title.toLowerCase().trim();
+          return existingExercises.find((existing) => {
+            const sameTemplate = exercise.templateId && existing.templateId && exercise.templateId === existing.templateId;
+            const sameTitle = existing.title.toLowerCase().trim() === normalizedExerciseTitle;
+            return sameTemplate || sameTitle;
+          });
+        };
+
+        const orderedExercises = routineExercises.map((exercise) => {
+          const existing = findExistingExercise(exercise);
+          if (!existing) return exercise;
+
+          return {
+            ...exercise,
+            lastWeightKg: existing.lastWeightKg || exercise.lastWeightKg,
+            maxWeightKg: Math.max(existing.maxWeightKg || 0, exercise.maxWeightKg || 0),
+            lastSetsCount: existing.lastSetsCount || exercise.lastSetsCount,
+            lastReps: existing.lastReps || exercise.lastReps,
+            lastPerformedDate: existing.lastPerformedDate || exercise.lastPerformedDate,
+            stuckSessions: existing.stuckSessions,
+            plateauWeeks: existing.plateauWeeks,
+            status: existing.status,
+            suggestion: existing.suggestion || exercise.suggestion,
+            frequency: existing.frequency || exercise.frequency,
+          };
+        }).sort((a, b) => a.order - b.order);
+
+        const totalExercises = orderedExercises.length;
+        const criticalCount = orderedExercises.filter((exercise) => exercise.status === 'critical').length;
+        const warningCount = orderedExercises.filter((exercise) => exercise.status === 'warning').length;
+        const okCount = orderedExercises.filter((exercise) => exercise.status === 'ok').length;
+        const stagnatedCount = criticalCount + warningCount;
+        const mostStagnatedExercise = [...orderedExercises].sort((a, b) => b.stuckSessions - a.stuckSessions)[0];
+
+        representedRoutine.exercises = orderedExercises;
+        representedRoutine.totalExercises = totalExercises;
+        representedRoutine.stagnatedCount = stagnatedCount;
+        representedRoutine.criticalCount = criticalCount;
+        representedRoutine.warningCount = warningCount;
+        representedRoutine.okCount = okCount;
+        representedRoutine.stagnationRate = totalExercises > 0 ? Math.round((stagnatedCount / totalExercises) * 1000) / 10 : 0;
+        representedRoutine.avgStuckSessions = totalExercises > 0
+          ? Math.round((orderedExercises.reduce((acc, exercise) => acc + exercise.stuckSessions, 0) / totalExercises) * 10) / 10
+          : 0;
+        representedRoutine.mostStagnatedExercise = mostStagnatedExercise?.stuckSessions > 0 ? mostStagnatedExercise : undefined;
+        representedRoutine.isHevyOfficialRoutine = true;
+        existingRoutineTitles.add(normalizedTitle);
+        continue;
+      }
+      if (representedRoutine) {
+        existingRoutineTitles.add(normalizedTitle);
+        continue;
+      }
 
       const totalExercises = routineExercises.length;
       const criticalCount = routineExercises.filter((exercise) => exercise.status === 'critical').length;

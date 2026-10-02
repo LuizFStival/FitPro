@@ -456,7 +456,12 @@ export default function Dashboard({ user }: DashboardProps) {
   const fetchUserData = async () => {
     setLoading(true);
     try {
-      const currentApiKey = localStorage.getItem(getUserStorageKey(user.uid, 'api_key')) || '';
+      const userApiKeyStorageKey = getUserStorageKey(user.uid, 'api_key');
+      const legacyApiKey = localStorage.getItem('hevy_api_key') || '';
+      const currentApiKey = localStorage.getItem(userApiKeyStorageKey) || legacyApiKey;
+      if (currentApiKey && !localStorage.getItem(userApiKeyStorageKey)) {
+        localStorage.setItem(userApiKeyStorageKey, currentApiKey);
+      }
       setHevyApiKey(currentApiKey);
 
       const savedHiddenRoutineIds = readLocalJson<string[]>(getUserStorageKey(user.uid, 'hidden_routines'), []);
@@ -594,9 +599,11 @@ export default function Dashboard({ user }: DashboardProps) {
 
   const saveSettings = async () => {
     try {
-      localStorage.setItem(getUserStorageKey(user.uid, 'api_key'), hevyApiKey.trim());
+      const trimmedApiKey = hevyApiKey.trim();
+      localStorage.setItem(getUserStorageKey(user.uid, 'api_key'), trimmedApiKey);
+      localStorage.setItem('hevy_api_key', trimmedApiKey);
       setIsSettingsOpen(false);
-      handleSync(hevyApiKey.trim());
+      handleSync(trimmedApiKey);
     } catch (error: any) {
       console.error("Error saving settings:", error);
       setSyncError("Falha ao salvar configurações: " + (error.message || ''));
