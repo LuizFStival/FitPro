@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Dumbbell, Activity, Settings, RefreshCw, Info, Layers, ClipboardList, CheckCircle2, X, Eye, EyeOff, SlidersHorizontal } from 'lucide-react';
+import { Dumbbell, Activity, Settings, RefreshCw, Info, Layers, ClipboardList, CheckCircle2, X, Eye, EyeOff, SlidersHorizontal, Clock } from 'lucide-react';
 import { motion } from 'motion/react';
 import { fetchAllHevyWorkouts, fetchHevyRoutines, postHevyWorkout, fetchExerciseTemplates } from '../services/hevyService';
 import { generateWorkoutInsights } from '../services/aiService';
@@ -7,6 +7,7 @@ import { calculateExercisePlateaus } from '../services/plateauCalculator';
 import { analyzeRoutineSplits } from '../services/routineAnalyzer';
 import { extractExerciseTemplatesFromWorkouts } from '../services/activeWorkoutBuilder';
 import { ActiveWorkoutSession, ExerciseTemplateOption } from '../types/workoutTracker';
+import { ExerciseEquivalenceGroup } from '../types/plateau';
 import ExercisePlateauView from './ExercisePlateauView';
 import WorkoutsView from './WorkoutsView';
 import RoutinesView from './RoutinesView';
@@ -67,6 +68,21 @@ const isHevyTemplateId = (templateId: string) => {
 
 const AUTO_SYNC_COOLDOWN_MS = 2 * 60 * 1000;
 
+function extractActiveTemplateIdsFromHevyRoutines(hevyRoutines: any[]) {
+  const ids = new Set<string>();
+  for (const routine of hevyRoutines || []) {
+    for (const exercise of routine?.exercises || []) {
+      const templateId = String(
+        exercise?.exercise_template_id || exercise?.template_id || exercise?.id || ''
+      ).trim();
+      if (templateId) {
+        ids.add(templateId);
+      }
+    }
+  }
+  return Array.from(ids);
+}
+
 interface DashboardProps {
   user: DashboardUser;
 }
@@ -84,6 +100,13 @@ export default function Dashboard({ user }: DashboardProps) {
   const [activeTab, setActiveTab] = useState<'routines' | 'workouts' | 'plateau' | 'performance' | 'tracker'>('performance');
   const [selectedWorkoutId, setSelectedWorkoutId] = useState<string | null>(null);
   const [hevyRoutines, setHevyRoutines] = useState<any[]>([]);
+  const [exerciseEquivalenceGroups, setExerciseEquivalenceGroups] = useState<ExerciseEquivalenceGroup[]>(() => {
+    return readLocalJson<ExerciseEquivalenceGroup[]>(getUserStorageKey(user.uid, 'exercise_equivalences'), []);
+  });
+  const [pauseThresholdDays, setPauseThresholdDays] = useState<number>(() => {
+    const stored = Number(localStorage.getItem(getUserStorageKey(user.uid, 'pause_threshold_days')) || 14);
+    return Number.isFinite(stored) && stored > 0 ? stored : 14;
+  });
   const [hiddenRoutineIds, setHiddenRoutineIds] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem(`hevy_hidden_routines_${user.uid}`) || '[]');
@@ -119,7 +142,15 @@ export default function Dashboard({ user }: DashboardProps) {
     fetchUserData();
   }, []);
 
-  const plateaus = useMemo(() => calculateExercisePlateaus(workouts), [workouts]);
+  const activeTemplateIds = useMemo(() => {
+    return extractActiveTemplateIdsFromHevyRoutines(hevyRoutines);
+  }, [hevyRoutines]);
+
+  const plateaus = useMemo(() => calculateExercisePlateaus(workouts, {
+    equivalenceGroups: exerciseEquivalenceGroups,
+    pauseThresholdDays,
+    activeTemplateIds,
+  }), [workouts, exerciseEquivalenceGroups, pauseThresholdDays, activeTemplateIds]);
   const routines = useMemo(() => analyzeRoutineSplits(workouts, plateaus, hevyRoutines), [workouts, plateaus, hevyRoutines]);
   const autoHiddenRoutineIds = useMemo(() => {
     return routines
@@ -367,6 +398,38 @@ export default function Dashboard({ user }: DashboardProps) {
 
   const handleShowAllRoutines = () => {
     handleSetHiddenRoutines([]);
+  };
+
+  const persistExerciseEquivalenceGroups = (groups: ExerciseEquivalenceGroup[]) => {
+    setExerciseEquivalenceGroups(groups);
+    writeLocalJson(getUserStorageKey(user.uid, 'exercise_equivalences'), groups);
+  };
+
+  const handleSaveExerciseEquivalence = (group: ExerciseEquivalenceGroup) => {
+    const incomingIds = new Set(group.exerciseTemplateIds.map((id) => String(id).trim()).filter(Boolean));
+    const existingGroup = exerciseEquivalenceGroups.find((item) =>
+      item.id === group.id || item.exerciseTemplateIds.some((id) => incomingIds.has(id))
+    );
+
+    const nextGroups = existingGroup
+      ? exerciseEquivalenceGroups.map((item) => {
+          if (item.id !== existingGroup.id) return item;
+          return {
+            ...item,
+            title: group.title || item.title,
+            routineId: group.routineId || item.routineId,
+            routineTitle: group.routineTitle || item.routineTitle,
+            exerciseTemplateIds: Array.from(new Set([...item.exerciseTemplateIds, ...group.exerciseTemplateIds])),
+            exerciseTitles: Array.from(new Set([...item.exerciseTitles, ...group.exerciseTitles])),
+          };
+        })
+      : [...exerciseEquivalenceGroups, group];
+
+    persistExerciseEquivalenceGroups(nextGroups);
+  };
+
+  const handleRemoveExerciseEquivalence = (groupId: string) => {
+    persistExerciseEquivalenceGroups(exerciseEquivalenceGroups.filter((group) => group.id !== groupId));
   };
 
   const handleRetryPendingSync = async () => {
@@ -653,6 +716,7 @@ export default function Dashboard({ user }: DashboardProps) {
       const trimmedApiKey = hevyApiKey.trim();
       localStorage.setItem(getUserStorageKey(user.uid, 'api_key'), trimmedApiKey);
       localStorage.setItem('hevy_api_key', trimmedApiKey);
+      localStorage.setItem(getUserStorageKey(user.uid, 'pause_threshold_days'), String(pauseThresholdDays));
       setIsSettingsOpen(false);
       handleSync(trimmedApiKey);
     } catch (error: any) {
@@ -862,6 +926,9 @@ export default function Dashboard({ user }: DashboardProps) {
             plateaus={plateaus}
             hevyRoutines={hevyRoutines}
             hiddenRoutineIds={effectiveHiddenRoutineIds}
+            equivalenceGroups={exerciseEquivalenceGroups}
+            onSaveExerciseEquivalence={handleSaveExerciseEquivalence}
+            onRemoveExerciseEquivalence={handleRemoveExerciseEquivalence}
             onOpenSettings={() => setIsSettingsOpen(true)}
           />
         ) : activeTab === 'workouts' ? (
@@ -1072,6 +1139,37 @@ export default function Dashboard({ user }: DashboardProps) {
                     <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin text-brand-primary' : 'text-brand-primary'}`} />
                     <span>{syncing ? 'Sincronizando...' : 'Sincronizar agora'}</span>
                   </button>
+                </div>
+              </section>
+
+              <section className="rounded-2xl bg-black/20 border border-white/5 p-4 sm:p-5 space-y-4">
+                <div>
+                  <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-brand-primary" />
+                    Retorno após pausa
+                  </h4>
+                  <p className="text-[11px] text-white/40 mt-0.5">
+                    Quando o intervalo entre duas sessões do mesmo exercício passar desse limite, o app trata como retorno neutro e não como platô.
+                  </p>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {[10, 12, 14].map((days) => (
+                    <button
+                      key={days}
+                      type="button"
+                      onClick={() => {
+                        setPauseThresholdDays(days);
+                        localStorage.setItem(getUserStorageKey(user.uid, 'pause_threshold_days'), String(days));
+                      }}
+                      className={`rounded-xl border px-3 py-2 text-xs font-bold transition-colors ${
+                        pauseThresholdDays === days
+                          ? 'bg-brand-primary text-brand-bg border-brand-primary'
+                          : 'bg-white/5 text-white/70 border-white/10 hover:bg-white/10'
+                      }`}
+                    >
+                      {days} dias
+                    </button>
+                  ))}
                 </div>
               </section>
 

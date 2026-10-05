@@ -22,10 +22,13 @@ import {
   Zap,
   Target,
   SlidersHorizontal,
-  Award
+  Award,
+  Link2,
+  Trash2,
+  X
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { ExercisePlateau, RoutineExercise, RoutineSplit } from '../types/plateau';
+import { ExerciseEquivalenceGroup, ExercisePlateau, RoutineExercise, RoutineSplit } from '../types/plateau';
 import { analyzeRoutineSplits } from '../services/routineAnalyzer';
 
 interface RoutinesViewProps {
@@ -33,6 +36,9 @@ interface RoutinesViewProps {
   plateaus: ExercisePlateau[];
   hevyRoutines?: any[];
   hiddenRoutineIds?: string[];
+  equivalenceGroups?: ExerciseEquivalenceGroup[];
+  onSaveExerciseEquivalence?: (group: ExerciseEquivalenceGroup) => void;
+  onRemoveExerciseEquivalence?: (groupId: string) => void;
   onOpenSettings?: () => void;
 }
 
@@ -41,6 +47,9 @@ export default function RoutinesView({
   plateaus,
   hevyRoutines = [],
   hiddenRoutineIds = [],
+  equivalenceGroups = [],
+  onSaveExerciseEquivalence,
+  onRemoveExerciseEquivalence,
   onOpenSettings
 }: RoutinesViewProps) {
   // Analyze routines (Treino A, Treino B, Treino C, etc.)
@@ -73,6 +82,8 @@ export default function RoutinesView({
   // Filter exercises inside active routine
   const [exerciseFilter, setExerciseFilter] = useState<'all' | 'stagnated' | 'critical' | 'ok'>('all');
   const [showComparison, setShowComparison] = useState<boolean>(false);
+  const [equivalenceModal, setEquivalenceModal] = useState<{ routine: RoutineSplit; exercise: RoutineExercise } | null>(null);
+  const [equivalenceSearch, setEquivalenceSearch] = useState('');
 
   // Overall statistics for all active routines combined
   const overallStats = useMemo(() => {
@@ -136,11 +147,51 @@ export default function RoutinesView({
         return ex.status === 'critical';
       }
       if (exerciseFilter === 'ok') {
-        return ex.status === 'ok';
+        return ex.status === 'ok' || ex.status === 'pause_return';
       }
       return true;
     }).sort((a, b) => a.order - b.order);
   }, [activeRoutine, exerciseFilter]);
+
+  const getEquivalenceGroupForExercise = (exercise: RoutineExercise) => {
+    const ids = [exercise.templateId, ...(exercise.equivalentTemplateIds || [])].filter(Boolean);
+    return equivalenceGroups.find((group) =>
+      group.exerciseTemplateIds.some((templateId) => ids.includes(templateId))
+    );
+  };
+
+  const getPlateauForExercise = (exercise: RoutineExercise) => {
+    const ids = [exercise.templateId, ...(exercise.equivalentTemplateIds || [])].filter(Boolean);
+    return plateaus.find((plateau) =>
+      plateau.exerciseTemplateId === exercise.templateId ||
+      ids.includes(plateau.exerciseTemplateId) ||
+      (plateau.equivalentTemplateIds || []).some((templateId) => ids.includes(templateId))
+    );
+  };
+
+  const createEquivalenceGroup = (source: RoutineExercise, target: RoutineExercise, routine: RoutineSplit) => {
+    const sourceIds = [source.templateId, ...(source.equivalentTemplateIds || [])].filter(Boolean);
+    const targetIds = [target.templateId, ...(target.equivalentTemplateIds || [])].filter(Boolean);
+    const exerciseTemplateIds = Array.from(new Set([...sourceIds, ...targetIds]));
+    const exerciseTitles = Array.from(new Set([
+      source.title,
+      target.title,
+      ...(source.variationTitles || []),
+      ...(target.variationTitles || []),
+    ].filter(Boolean)));
+
+    onSaveExerciseEquivalence?.({
+      id: `eq_${routine.id}_${exerciseTemplateIds.sort().join('_')}`,
+      routineId: routine.id,
+      routineTitle: routine.title,
+      title: `${source.title} / ${target.title}`,
+      exerciseTemplateIds,
+      exerciseTitles,
+      createdAt: new Date().toISOString(),
+    });
+    setEquivalenceModal(null);
+    setEquivalenceSearch('');
+  };
 
   if (allRoutines.length === 0) {
     return (
@@ -655,6 +706,10 @@ export default function RoutinesView({
               filteredExercises.map((ex, idx) => {
                 const isCritical = ex.status === 'critical';
                 const isWarning = ex.status === 'warning';
+                const isPauseReturn = ex.status === 'pause_return';
+                const equivalenceGroup = getEquivalenceGroupForExercise(ex);
+                const exercisePlateau = getPlateauForExercise(ex);
+                const recentSessions = (exercisePlateau?.sessionsHistory || []).slice(-5);
 
                 return (
                   <div
@@ -664,6 +719,8 @@ export default function RoutinesView({
                         ? 'bg-rose-950/20 border-rose-500/30 hover:border-rose-500/50'
                         : isWarning
                         ? 'bg-amber-950/20 border-amber-500/30 hover:border-amber-500/50'
+                        : isPauseReturn
+                        ? 'bg-sky-950/10 border-sky-500/25 hover:border-sky-500/40'
                         : 'bg-black/20 border-white/5 hover:border-white/15'
                     }`}
                   >
@@ -688,10 +745,21 @@ export default function RoutinesView({
                                 <AlertTriangle className="w-3 h-3 text-amber-400" />
                                 Em Atenção ({ex.stuckSessions} sessões)
                               </span>
+                            ) : isPauseReturn ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/15 text-sky-300 border border-sky-500/30 font-mono">
+                                <Clock className="w-3 h-3 text-sky-300" />
+                                Retorno de pausa ({ex.pauseReturnDays}d)
+                              </span>
                             ) : (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-mono">
                                 <CheckCircle2 className="w-3 h-3 text-emerald-400" />
                                 Evoluindo
+                              </span>
+                            )}
+                            {ex.isEquivalentGroup && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand-primary/10 text-brand-primary border border-brand-primary/20 font-mono">
+                                <Link2 className="w-3 h-3" />
+                                Equivalente
                               </span>
                             )}
                           </div>
@@ -699,9 +767,57 @@ export default function RoutinesView({
                           {/* Actionable Plateau Tip */}
                           {ex.suggestion && (
                             <p className="text-[11px] text-white/60 mt-1 max-w-xl leading-relaxed text-wrap-safe">
-                              💡 <span className="text-white/80 font-medium">Estratégia:</span> {ex.suggestion}
+                              <span className="text-white/80 font-medium">Estratégia:</span> {ex.suggestion}
                             </p>
                           )}
+                          {recentSessions.length > 0 && (
+                            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                              <span className="text-[9px] uppercase tracking-wider text-white/35 font-bold">
+                                Histórico combinado
+                              </span>
+                              {recentSessions.map((session) => (
+                                <span
+                                  key={`${session.workoutId}_${session.exerciseTemplateId}_${session.date.getTime()}`}
+                                  className="inline-flex items-center gap-1 rounded-lg bg-white/5 border border-white/10 px-2 py-1 text-[10px] font-mono text-white/70"
+                                  title={`${session.exerciseTitle} em ${session.date.toLocaleDateString('pt-BR')}`}
+                                >
+                                  <span
+                                    className="w-2 h-2 rounded-full shrink-0"
+                                    style={{ backgroundColor: session.variationColor || '#4FACFE' }}
+                                  />
+                                  {session.weightKg}kg
+                                </span>
+                              ))}
+                              {exercisePlateau?.isEquivalentGroup && (
+                                <span className="text-[10px] text-white/35">
+                                  cores = variações usadas
+                                </span>
+                              )}
+                            </div>
+                          )}
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEquivalenceModal({ routine: activeRoutine, exercise: ex });
+                                setEquivalenceSearch('');
+                              }}
+                              className="inline-flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 px-2.5 py-1 text-[10px] font-bold text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                            >
+                              <Link2 className="w-3 h-3 text-brand-primary" />
+                              Marcar equivalente
+                            </button>
+                            {equivalenceGroup && onRemoveExerciseEquivalence && (
+                              <button
+                                type="button"
+                                onClick={() => onRemoveExerciseEquivalence(equivalenceGroup.id)}
+                                className="inline-flex items-center gap-1.5 rounded-lg bg-rose-500/10 border border-rose-500/20 px-2.5 py-1 text-[10px] font-bold text-rose-200 hover:bg-rose-500/15 transition-colors"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                                Remover grupo
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -733,6 +849,66 @@ export default function RoutinesView({
                 );
               })
             )}
+          </div>
+        </div>
+      )}
+      {equivalenceModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-3 sm:p-6">
+          <div className="w-full max-w-xl rounded-3xl bg-brand-surface border border-white/10 shadow-2xl overflow-hidden">
+            <div className="p-4 sm:p-5 border-b border-white/10 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h3 className="text-base font-bold text-white">Marcar exercício equivalente</h3>
+                <p className="text-xs text-white/45 mt-1 text-wrap-safe">
+                  Combine o histórico de {equivalenceModal.exercise.title} com outra variação do {equivalenceModal.routine.title}.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEquivalenceModal(null)}
+                className="w-8 h-8 rounded-xl bg-white/5 text-white/50 hover:text-white hover:bg-white/10 flex items-center justify-center shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-5 space-y-3">
+              <input
+                value={equivalenceSearch}
+                onChange={(event) => setEquivalenceSearch(event.target.value)}
+                placeholder="Buscar exercício do mesmo treino..."
+                className="w-full rounded-xl bg-brand-bg border border-brand-border px-4 py-3 text-sm text-white placeholder-white/30 outline-none focus:border-brand-primary"
+              />
+
+              <div className="max-h-[45vh] overflow-y-auto custom-scrollbar space-y-2 pr-1">
+                {equivalenceModal.routine.exercises
+                  .filter((candidate) => candidate.templateId !== equivalenceModal.exercise.templateId)
+                  .filter((candidate) => {
+                    const query = equivalenceSearch.trim().toLowerCase();
+                    if (!query) return true;
+                    return candidate.title.toLowerCase().includes(query);
+                  })
+                  .map((candidate) => (
+                    <button
+                      key={`${candidate.templateId}_${candidate.order}`}
+                      type="button"
+                      onClick={() => createEquivalenceGroup(equivalenceModal.exercise, candidate, equivalenceModal.routine)}
+                      className="w-full rounded-2xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/5 hover:border-brand-primary/30 p-3 text-left transition-colors flex items-center justify-between gap-3"
+                    >
+                      <div className="min-w-0">
+                        <div className="text-sm font-bold text-white text-wrap-safe">{candidate.title}</div>
+                        <div className="text-[10px] text-white/35 font-mono">
+                          slot #{candidate.order} · {candidate.lastWeightKg > 0 ? `${candidate.lastWeightKg} kg` : 'carga corporal'}
+                        </div>
+                      </div>
+                      <Link2 className="w-4 h-4 text-brand-primary shrink-0" />
+                    </button>
+                  ))}
+              </div>
+
+              <p className="text-[11px] text-white/35 leading-relaxed">
+                A partir daí, carga, histórico e estagnação passam a considerar qualquer variação dentro do grupo.
+              </p>
+            </div>
           </div>
         </div>
       )}

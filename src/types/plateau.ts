@@ -1,16 +1,34 @@
-export type PlateauStatus = 'ok' | 'warning' | 'critical';
+export type PlateauStatus = 'ok' | 'warning' | 'critical' | 'pause_return';
+
+export interface ExerciseEquivalenceGroup {
+  id: string;
+  routineId: string;
+  routineTitle: string;
+  title: string;
+  exerciseTemplateIds: string[];
+  exerciseTitles: string[];
+  createdAt: string;
+}
 
 export interface ExerciseSession {
   date: Date;
   workoutTitle: string;
   weightKg: number;
   workoutId: string;
+  exerciseTemplateId: string;
+  exerciseTitle: string;
+  daysSincePrevious?: number | null;
+  variationColor?: string;
 }
 
 export interface ExercisePlateau {
   exerciseTemplateId: string;
   exerciseTitle: string;
   routineTitle: string;
+  equivalentTemplateIds?: string[];
+  variationTitles?: string[];
+  isEquivalentGroup?: boolean;
+  isActiveInCurrentRoutine?: boolean;
   currentWeightKg: number;
   stuckSessions: number;
   stuckWeeks: number;
@@ -18,6 +36,8 @@ export interface ExercisePlateau {
   plateauStartDate: Date;
   lastSessionDate: Date;
   status: PlateauStatus;
+  pauseReturnDays?: number;
+  pauseThresholdDays?: number;
   sessionsHistory: ExerciseSession[];
 }
 
@@ -81,6 +101,11 @@ export interface RoutineExercise {
   stuckSessions: number;
   plateauWeeks?: number;
   status: PlateauStatus;
+  equivalentTemplateIds?: string[];
+  variationTitles?: string[];
+  isEquivalentGroup?: boolean;
+  isActiveInCurrentRoutine?: boolean;
+  pauseReturnDays?: number;
   suggestion?: string;
   frequency: number;
 }

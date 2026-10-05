@@ -8,6 +8,31 @@ export const generateId = (): string => {
   return 'act_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36);
 };
 
+const toTrackerPlateauStatus = (status: PlateauStatus | undefined): 'ok' | 'warning' | 'critical' => {
+  return status === 'critical' || status === 'warning' ? status : 'ok';
+};
+
+const buildPlateauMaps = (plateaus: ExercisePlateau[]) => {
+  const plateauMap = new Map<string, ExercisePlateau>();
+  const plateauTitleMap = new Map<string, ExercisePlateau>();
+
+  for (const plateau of plateaus) {
+    if (plateau.exerciseTemplateId) {
+      plateauMap.set(plateau.exerciseTemplateId, plateau);
+    }
+    for (const templateId of plateau.equivalentTemplateIds || []) {
+      if (templateId) {
+        plateauMap.set(templateId, plateau);
+      }
+    }
+    if (plateau.exerciseTitle) {
+      plateauTitleMap.set(plateau.exerciseTitle.toLowerCase().trim(), plateau);
+    }
+  }
+
+  return { plateauMap, plateauTitleMap };
+};
+
 /**
  * Builds an Active Workout Session from a analyzed RoutineSplit
  */
@@ -15,8 +40,7 @@ export const buildSessionFromRoutineSplit = (
   routine: RoutineSplit,
   plateaus: ExercisePlateau[] = []
 ): ActiveWorkoutSession => {
-  const plateauMap = new Map(plateaus.map(p => [p.exerciseTemplateId, p]));
-  const plateauTitleMap = new Map(plateaus.map(p => [(p.exerciseTitle || '').toLowerCase().trim(), p]));
+  const { plateauMap, plateauTitleMap } = buildPlateauMaps(plateaus);
 
   const exercises: TrackerExercise[] = (routine.exercises || []).map((ex, exIdx) => {
     const plateau = plateauMap.get(ex.templateId) || plateauTitleMap.get((ex.title || '').toLowerCase().trim());
@@ -56,7 +80,7 @@ export const buildSessionFromRoutineSplit = (
         : stuckSessions >= 3
         ? 'Atenção na progressão (3-5 sessões): tente +1 repetição na 1ª série ou adicione microcarga (+1 kg).'
         : 'Progressão normal: mantenha boa cadência e amplitude completa.',
-      plateauStatus: status,
+      plateauStatus: toTrackerPlateauStatus(status),
       lastSessionDate: ex.lastPerformedDate || null,
     };
   });
@@ -80,8 +104,7 @@ export const buildSessionFromHevyRoutine = (
   hevyRoutine: any,
   plateaus: ExercisePlateau[] = []
 ): ActiveWorkoutSession => {
-  const plateauMap = new Map(plateaus.map(p => [p.exerciseTemplateId, p]));
-  const plateauTitleMap = new Map(plateaus.map(p => [(p.exerciseTitle || '').toLowerCase().trim(), p]));
+  const { plateauMap, plateauTitleMap } = buildPlateauMaps(plateaus);
 
   const exercises: TrackerExercise[] = (hevyRoutine.exercises || []).map((ex: any) => {
     const templateId = ex.exercise_template_id || ex.template_id || ex.id || generateId();
@@ -120,7 +143,7 @@ export const buildSessionFromHevyRoutine = (
         : stuckSessions >= 3
         ? 'Atenção na progressão (3-5 sessões): tente +1 repetição na 1ª série ou adicionar microcarga (+1 kg).'
         : 'Progressão normal: busque manter a boa forma e executar repetições completas.',
-      plateauStatus: status,
+      plateauStatus: toTrackerPlateauStatus(status),
       lastSessionDate: null,
     };
   });

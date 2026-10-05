@@ -39,18 +39,84 @@ const parseWorkoutDate = (workout: any): Date => {
 };
 
 const formatVolume = (value: number) => `${Math.round(value).toLocaleString()} kg`;
-const visibleInsightLines = (insights: string) =>
-  insights
-    .split('\n')
-    .map((line) => line.replace(/^[*•-]\s*/, '').trim())
-    .filter((line) => line && !/^Volume\s*&\s*Sobrecarga:/i.test(line));
+const formatFrequency = (value: number) => (Math.round(value * 10) / 10).toLocaleString('pt-BR', {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+
+function buildAnalyticsMetrics(workouts: any[], plateaus: ExercisePlateau[], routines: RoutineSplit[]) {
+  const now = Date.now();
+  const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+  const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
+
+  const sortedWorkouts = [...workouts].sort((a, b) => parseWorkoutDate(b).getTime() - parseWorkoutDate(a).getTime());
+  const weekWorkouts = sortedWorkouts.filter((workout) => parseWorkoutDate(workout).getTime() >= sevenDaysAgo);
+  const monthWorkouts = sortedWorkouts.filter((workout) => parseWorkoutDate(workout).getTime() >= thirtyDaysAgo);
+  const firstWorkout = sortedWorkouts[sortedWorkouts.length - 1];
+  const rangeDays = firstWorkout
+    ? Math.max(7, Math.round((now - parseWorkoutDate(firstWorkout).getTime()) / (1000 * 60 * 60 * 24)))
+    : 0;
+
+  const weekVolume = weekWorkouts.reduce((acc, workout) => acc + (Number(workout.totalVolume) || 0), 0);
+  const monthVolume = monthWorkouts.reduce((acc, workout) => acc + (Number(workout.totalVolume) || 0), 0);
+  const weekSets = weekWorkouts.reduce((acc, workout) => acc + (Number(workout.totalSets) || 0), 0);
+  const monthAverageVolume = monthWorkouts.length > 0 ? Math.round(monthVolume / monthWorkouts.length) : 0;
+  const weeklyFrequency30d = monthWorkouts.length / (30 / 7);
+  const overallWeeklyFrequency = rangeDays > 0 ? sortedWorkouts.length / (rangeDays / 7) : 0;
+  const criticalPlateaus = plateaus.filter((plateau) => plateau.status === 'critical');
+  const warningPlateaus = plateaus.filter((plateau) => plateau.status === 'warning');
+  const pauseReturns = plateaus.filter((plateau) => plateau.status === 'pause_return');
+  const activeAlerts = [...criticalPlateaus, ...warningPlateaus].filter((plateau) => plateau.isActiveInCurrentRoutine !== false);
+  const activeCriticalPlateaus = criticalPlateaus.filter((plateau) => plateau.isActiveInCurrentRoutine !== false);
+  const activeWarningPlateaus = warningPlateaus.filter((plateau) => plateau.isActiveInCurrentRoutine !== false);
+  const visibleRoutines = routines.filter((routine) => routine.isActiveRoutine);
+  const nextRoutine = [...visibleRoutines].sort((a, b) => {
+    const aDays = a.daysSinceLast >= 999 ? -1 : a.daysSinceLast;
+    const bDays = b.daysSinceLast >= 999 ? -1 : b.daysSinceLast;
+    return bDays - aDays;
+  })[0] || visibleRoutines[0] || routines[0];
+
+  const readingLines = [
+    sortedWorkouts.length > 0
+      ? `Frequência atual: ${formatFrequency(weeklyFrequency30d)} treinos/semana (últimos 30 dias), contra média geral de ${formatFrequency(overallWeeklyFrequency)} treinos/semana (${sortedWorkouts.length} sessões analisadas).`
+      : '',
+    monthWorkouts.length > 0
+      ? `Volume médio mensal: ${formatVolume(monthAverageVolume)} por treino (últimos 30 dias), com ${formatVolume(weekVolume)} acumulados na semana atual.`
+      : '',
+    plateaus.length > 0
+      ? `Alertas ativos: ${activeAlerts.length} exercícios travados (${activeCriticalPlateaus.length} críticos, ${activeWarningPlateaus.length} em atenção) em ${plateaus.length} exercícios analisados.`
+      : '',
+    pauseReturns.length > 0
+      ? `Retorno de pausa: ${pauseReturns.length} exercício(s) voltaram após intervalo longo e não entraram na sequência de platô.`
+      : '',
+    nextRoutine
+      ? `Antes do próximo treino: revisar ${nextRoutine.title}, com ${nextRoutine.warningCount} em atenção e ${nextRoutine.criticalCount} críticos.`
+      : '',
+  ].filter(Boolean);
+
+  return {
+    sortedWorkouts,
+    weekWorkouts,
+    monthWorkouts,
+    weekVolume,
+    monthVolume,
+    weekSets,
+    monthAverageVolume,
+    weeklyFrequency30d,
+    overallWeeklyFrequency,
+    criticalPlateaus,
+    warningPlateaus,
+    activeAlerts,
+    readingLines,
+  };
+}
 
 export default function AnalyticsSummaryView({
   workouts,
   plateaus,
   routines,
   hiddenRoutineIds,
-  insights,
+  insights: _insights,
   lastSyncedAt,
   syncing,
   hasApiKey,
@@ -60,20 +126,20 @@ export default function AnalyticsSummaryView({
   onOpenPlateaus,
   onOpenWorkouts,
 }: AnalyticsSummaryViewProps) {
-  const now = Date.now();
-  const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
-  const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
-
-  const sortedWorkouts = [...workouts].sort((a, b) => parseWorkoutDate(b).getTime() - parseWorkoutDate(a).getTime());
-  const weekWorkouts = sortedWorkouts.filter((workout) => parseWorkoutDate(workout).getTime() >= sevenDaysAgo);
-  const monthWorkouts = sortedWorkouts.filter((workout) => parseWorkoutDate(workout).getTime() >= thirtyDaysAgo);
-  const weekVolume = weekWorkouts.reduce((acc, workout) => acc + (Number(workout.totalVolume) || 0), 0);
-  const monthVolume = monthWorkouts.reduce((acc, workout) => acc + (Number(workout.totalVolume) || 0), 0);
-  const weekSets = weekWorkouts.reduce((acc, workout) => acc + (Number(workout.totalSets) || 0), 0);
-  const monthAverageVolume = monthWorkouts.length > 0 ? Math.round(monthVolume / monthWorkouts.length) : 0;
-
-  const criticalPlateaus = plateaus.filter((plateau) => plateau.status === 'critical');
-  const warningPlateaus = plateaus.filter((plateau) => plateau.status === 'warning');
+  const metrics = buildAnalyticsMetrics(workouts, plateaus, routines);
+  const {
+    sortedWorkouts,
+    weekWorkouts,
+    monthWorkouts,
+    weekVolume,
+    monthVolume,
+    weekSets,
+    monthAverageVolume,
+    weeklyFrequency30d,
+    criticalPlateaus,
+    warningPlateaus,
+    readingLines,
+  } = metrics;
   const stuckExercises = [...criticalPlateaus, ...warningPlateaus]
     .sort((a, b) => {
       if (a.status !== b.status) return a.status === 'critical' ? -1 : 1;
@@ -113,14 +179,14 @@ export default function AnalyticsSummaryView({
   const lastSyncLabel = lastSyncedAt
     ? format(new Date(lastSyncedAt), "dd/MM 'às' HH:mm", { locale: ptBR })
     : 'ainda não sincronizado';
-  const readableInsights = visibleInsightLines(insights);
+  const readableInsights = readingLines;
 
   const headlineCards = [
     {
       label: 'Frequência semanal',
-      value: weekWorkouts.length,
-      unit: weekWorkouts.length === 1 ? 'treino' : 'treinos',
-      detail: `${monthWorkouts.length} nos últimos 30 dias`,
+      value: formatFrequency(weeklyFrequency30d),
+      unit: 'treinos/sem',
+      detail: `${monthWorkouts.length} treinos nos últimos 30 dias`,
       icon: CalendarDays,
       tone: 'text-brand-primary',
     },

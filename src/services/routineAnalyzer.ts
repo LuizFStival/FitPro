@@ -84,6 +84,10 @@ function getDisplayExerciseTitle(title: string): string {
 function getPlateauSuggestion(title: string, stuckSessions: number, status: PlateauStatus): string {
   const lower = title.toLowerCase();
 
+  if (status === 'pause_return') {
+    return 'Retorno após pausa detectado. Priorize técnica e reps consistentes antes de buscar recorde de carga.';
+  }
+
   if (status === 'critical') {
     if (lower.includes('supino') || lower.includes('bench press')) {
       return `Travado há ${stuckSessions} sessões. Experimente trocar a pegada (fechada/halteres), periodizar para 4-6 reps pesadas ou introduzir pausa no peito (spoto press) por 2 semanas.`;
@@ -164,6 +168,11 @@ export function analyzeRoutineSplits(
   for (const p of plateaus) {
     if (p.exerciseTemplateId) {
       plateauByTemplateId.set(p.exerciseTemplateId, p);
+    }
+    for (const equivalentTemplateId of p.equivalentTemplateIds || []) {
+      if (equivalentTemplateId) {
+        plateauByTemplateId.set(equivalentTemplateId, p);
+      }
     }
     if (p.exerciseTitle) {
       plateauByTitle.set(p.exerciseTitle.toLowerCase().trim(), p);
@@ -260,7 +269,7 @@ export function analyzeRoutineSplits(
 
       exercises.forEach((ex: any, exIdx: number) => {
         const templateId = String(ex.exercise_template_id || ex.id || ex.title || '').trim();
-        const title = String(ex.title || 'Exercício').trim();
+        const title = getDisplayExerciseTitle(String(ex.title || 'Exercício').trim());
         if (!title && !templateId) return;
 
         const key = templateId || title.toLowerCase();
@@ -319,8 +328,8 @@ export function analyzeRoutineSplits(
         : (plateau ? plateau.currentWeightKg : item.maxWeightKg);
 
       return {
-        templateId: item.templateId,
-        title: item.title,
+        templateId: plateau?.exerciseTemplateId || item.templateId,
+        title: plateau?.exerciseTitle || item.title,
         order: item.order,
         lastWeightKg: effectiveWeight,
         maxWeightKg: Math.max(item.maxWeightKg, plateauMaxWeight, effectiveWeight),
@@ -330,6 +339,11 @@ export function analyzeRoutineSplits(
         stuckSessions,
         plateauWeeks,
         status,
+        equivalentTemplateIds: plateau?.equivalentTemplateIds,
+        variationTitles: plateau?.variationTitles,
+        isEquivalentGroup: plateau?.isEquivalentGroup,
+        isActiveInCurrentRoutine: plateau?.isActiveInCurrentRoutine,
+        pauseReturnDays: plateau?.pauseReturnDays,
         suggestion: getPlateauSuggestion(item.title, stuckSessions, status),
         frequency: item.frequency
       };
@@ -342,7 +356,7 @@ export function analyzeRoutineSplits(
     const totalExercises = routineExercises.length;
     const criticalCount = routineExercises.filter((e) => e.status === 'critical').length;
     const warningCount = routineExercises.filter((e) => e.status === 'warning').length;
-    const okCount = routineExercises.filter((e) => e.status === 'ok').length;
+    const okCount = routineExercises.filter((e) => e.status === 'ok' || e.status === 'pause_return').length;
     const stagnatedCount = criticalCount + warningCount;
 
     const stagnationRate = totalExercises > 0
@@ -434,8 +448,8 @@ export function analyzeRoutineSplits(
         const status: PlateauStatus = plateau?.status || (stuckSessions >= 6 ? 'critical' : stuckSessions >= 3 ? 'warning' : 'ok');
 
         return {
-          templateId,
-          title,
+          templateId: plateau?.exerciseTemplateId || templateId,
+          title: plateau?.exerciseTitle || title,
           order: index + 1,
           lastWeightKg,
           maxWeightKg,
@@ -445,6 +459,11 @@ export function analyzeRoutineSplits(
           stuckSessions,
           plateauWeeks: plateau?.stuckWeeks || 0,
           status,
+          equivalentTemplateIds: plateau?.equivalentTemplateIds,
+          variationTitles: plateau?.variationTitles,
+          isEquivalentGroup: plateau?.isEquivalentGroup,
+          isActiveInCurrentRoutine: plateau?.isActiveInCurrentRoutine,
+          pauseReturnDays: plateau?.pauseReturnDays,
           suggestion: getPlateauSuggestion(title, stuckSessions, status),
           frequency: 0,
         };
@@ -477,6 +496,11 @@ export function analyzeRoutineSplits(
             stuckSessions: existing.stuckSessions,
             plateauWeeks: existing.plateauWeeks,
             status: existing.status,
+            equivalentTemplateIds: existing.equivalentTemplateIds || exercise.equivalentTemplateIds,
+            variationTitles: existing.variationTitles || exercise.variationTitles,
+            isEquivalentGroup: existing.isEquivalentGroup || exercise.isEquivalentGroup,
+            isActiveInCurrentRoutine: existing.isActiveInCurrentRoutine ?? exercise.isActiveInCurrentRoutine,
+            pauseReturnDays: existing.pauseReturnDays || exercise.pauseReturnDays,
             suggestion: existing.suggestion || exercise.suggestion,
             frequency: existing.frequency || exercise.frequency,
           };
@@ -485,7 +509,7 @@ export function analyzeRoutineSplits(
         const totalExercises = orderedExercises.length;
         const criticalCount = orderedExercises.filter((exercise) => exercise.status === 'critical').length;
         const warningCount = orderedExercises.filter((exercise) => exercise.status === 'warning').length;
-        const okCount = orderedExercises.filter((exercise) => exercise.status === 'ok').length;
+        const okCount = orderedExercises.filter((exercise) => exercise.status === 'ok' || exercise.status === 'pause_return').length;
         const stagnatedCount = criticalCount + warningCount;
         const mostStagnatedExercise = [...orderedExercises].sort((a, b) => b.stuckSessions - a.stuckSessions)[0];
 
@@ -512,7 +536,7 @@ export function analyzeRoutineSplits(
       const totalExercises = routineExercises.length;
       const criticalCount = routineExercises.filter((exercise) => exercise.status === 'critical').length;
       const warningCount = routineExercises.filter((exercise) => exercise.status === 'warning').length;
-      const okCount = routineExercises.filter((exercise) => exercise.status === 'ok').length;
+      const okCount = routineExercises.filter((exercise) => exercise.status === 'ok' || exercise.status === 'pause_return').length;
       const stagnatedCount = criticalCount + warningCount;
       const mostStagnatedExercise = [...routineExercises].sort((a, b) => b.stuckSessions - a.stuckSessions)[0];
       const isBeginnerOrLegacy = checkIsBeginnerOrLegacy(title, 0, false);
