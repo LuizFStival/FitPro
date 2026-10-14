@@ -14,6 +14,9 @@ export interface ExerciseSession {
   date: Date;
   workoutTitle: string;
   weightKg: number;
+  totalReps?: number;
+  volumeKg?: number;
+  bestSetReps?: number;
   workoutId: string;
   exerciseTemplateId: string;
   exerciseTitle: string;
@@ -22,6 +25,7 @@ export interface ExerciseSession {
 }
 
 export interface ExercisePlateau {
+  routineId?: string;
   exerciseTemplateId: string;
   exerciseTitle: string;
   routineTitle: string;

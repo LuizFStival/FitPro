@@ -135,7 +135,8 @@ export default function WorkoutsView({
   const plateauByTemplateId = useMemo(() => {
     const map = new Map<string, ExercisePlateau>();
     for (const p of allPlateaus) {
-      map.set(p.exerciseTemplateId, p);
+      map.set(`${p.routineId}::${p.exerciseTemplateId}`, p);
+      for (const id of p.equivalentTemplateIds || []) map.set(`${p.routineId}::${id}`, p);
     }
     return map;
   }, [allPlateaus]);
@@ -143,17 +144,18 @@ export default function WorkoutsView({
   const plateauByTitle = useMemo(() => {
     const map = new Map<string, ExercisePlateau>();
     for (const p of allPlateaus) {
-      map.set(p.exerciseTitle.toLowerCase().trim(), p);
+      map.set(`${p.routineId}::${p.exerciseTitle.toLowerCase().trim()}`, p);
     }
     return map;
   }, [allPlateaus]);
 
-  const getExercisePlateau = (exercise: any): ExercisePlateau | undefined => {
-    const templateId = String(exercise.exercise_template_id || exercise.id || '').trim();
+  const getExercisePlateau = (exercise: any, routineTitle: string): ExercisePlateau | undefined => {
+    const prefix = `${getRoutineStorageId(routineTitle)}::`;
+    const templateId = prefix + String(exercise.exercise_template_id || exercise.id || '').trim();
     if (templateId && plateauByTemplateId.has(templateId)) {
       return plateauByTemplateId.get(templateId);
     }
-    const title = String(exercise.title || '').toLowerCase().trim();
+    const title = prefix + String(exercise.title || '').toLowerCase().trim();
     if (title && plateauByTitle.has(title)) {
       return plateauByTitle.get(title);
     }
@@ -179,7 +181,7 @@ export default function WorkoutsView({
       }[] = [];
 
       for (const ex of exercises) {
-        const p = getExercisePlateau(ex);
+        const p = getExercisePlateau(ex, workout.title);
         if (p) {
           exercisePlateauList.push({
             templateId: p.exerciseTemplateId,
@@ -1051,7 +1053,7 @@ export default function WorkoutsView({
                       {!isExpanded && exercises.length > 0 && (
                         <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
                           {exercises.slice(0, 5).map((ex, exIdx) => {
-                            const exPlat = getExercisePlateau(ex);
+                            const exPlat = getExercisePlateau(ex, workout.title);
                             const dotColor = exPlat?.status === 'critical' 
                               ? 'bg-rose-500' 
                               : exPlat?.status === 'warning' 
@@ -1200,7 +1202,7 @@ export default function WorkoutsView({
                                 0
                               );
 
-                              const plateau = getExercisePlateau(exercise);
+                              const plateau = getExercisePlateau(exercise, workout.title);
 
                               return (
                                 <div

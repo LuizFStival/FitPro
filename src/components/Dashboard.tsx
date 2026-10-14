@@ -8,6 +8,7 @@ import { analyzeRoutineSplits } from '../services/routineAnalyzer';
 import { extractExerciseTemplatesFromWorkouts } from '../services/activeWorkoutBuilder';
 import { ActiveWorkoutSession, ExerciseTemplateOption } from '../types/workoutTracker';
 import { ExerciseEquivalenceGroup } from '../types/plateau';
+import { getRoutineStorageId } from '../services/routineIdentity';
 import ExercisePlateauView from './ExercisePlateauView';
 import WorkoutsView from './WorkoutsView';
 import RoutinesView from './RoutinesView';
@@ -143,8 +144,10 @@ export default function Dashboard({ user }: DashboardProps) {
   }, []);
 
   const activeTemplateIds = useMemo(() => {
-    return extractActiveTemplateIdsFromHevyRoutines(hevyRoutines);
-  }, [hevyRoutines]);
+    return hevyRoutines.length > 0 ? extractActiveTemplateIdsFromHevyRoutines(hevyRoutines.filter((routine) =>
+      !hiddenRoutineIds.includes(getRoutineStorageId(routine.title || '')) && !/iniciante|antigo|old/i.test(routine.title || '')
+    )) : undefined;
+  }, [hevyRoutines, hiddenRoutineIds]);
 
   const plateaus = useMemo(() => calculateExercisePlateaus(workouts, {
     equivalenceGroups: exerciseEquivalenceGroups,
@@ -407,23 +410,18 @@ export default function Dashboard({ user }: DashboardProps) {
 
   const handleSaveExerciseEquivalence = (group: ExerciseEquivalenceGroup) => {
     const incomingIds = new Set(group.exerciseTemplateIds.map((id) => String(id).trim()).filter(Boolean));
-    const existingGroup = exerciseEquivalenceGroups.find((item) =>
+    const overlappingGroups = exerciseEquivalenceGroups.filter((item) =>
       item.id === group.id || item.exerciseTemplateIds.some((id) => incomingIds.has(id))
     );
-
-    const nextGroups = existingGroup
-      ? exerciseEquivalenceGroups.map((item) => {
-          if (item.id !== existingGroup.id) return item;
-          return {
-            ...item,
-            title: group.title || item.title,
-            routineId: group.routineId || item.routineId,
-            routineTitle: group.routineTitle || item.routineTitle,
-            exerciseTemplateIds: Array.from(new Set([...item.exerciseTemplateIds, ...group.exerciseTemplateIds])),
-            exerciseTitles: Array.from(new Set([...item.exerciseTitles, ...group.exerciseTitles])),
-          };
-        })
-      : [...exerciseEquivalenceGroups, group];
+    const nextGroups = [
+      ...exerciseEquivalenceGroups.filter((item) => !overlappingGroups.includes(item)),
+      {
+        ...group,
+        id: overlappingGroups[0]?.id || group.id,
+        exerciseTemplateIds: Array.from(new Set([...group.exerciseTemplateIds, ...overlappingGroups.flatMap((item) => item.exerciseTemplateIds)])),
+        exerciseTitles: Array.from(new Set([...group.exerciseTitles, ...overlappingGroups.flatMap((item) => item.exerciseTitles)])),
+      },
+    ];
 
     persistExerciseEquivalenceGroups(nextGroups);
   };

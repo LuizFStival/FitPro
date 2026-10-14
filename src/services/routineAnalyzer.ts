@@ -167,24 +167,25 @@ export function analyzeRoutineSplits(
 
   for (const p of plateaus) {
     if (p.exerciseTemplateId) {
-      plateauByTemplateId.set(p.exerciseTemplateId, p);
+      plateauByTemplateId.set(`${p.routineId}::${p.exerciseTemplateId}`, p);
     }
     for (const equivalentTemplateId of p.equivalentTemplateIds || []) {
       if (equivalentTemplateId) {
-        plateauByTemplateId.set(equivalentTemplateId, p);
+        plateauByTemplateId.set(`${p.routineId}::${equivalentTemplateId}`, p);
       }
     }
     if (p.exerciseTitle) {
-      plateauByTitle.set(p.exerciseTitle.toLowerCase().trim(), p);
+      plateauByTitle.set(`${p.routineId}::${p.exerciseTitle.toLowerCase().trim()}`, p);
     }
   }
 
-  const getExercisePlateau = (templateId: string, title: string): ExercisePlateau | undefined => {
-    const tid = String(templateId || '').trim();
+  const getExercisePlateau = (templateId: string, title: string, routineTitle: string): ExercisePlateau | undefined => {
+    const prefix = `${getRoutineStorageId(routineTitle)}::`;
+    const tid = prefix + String(templateId || '').trim();
     if (tid && plateauByTemplateId.has(tid)) {
       return plateauByTemplateId.get(tid);
     }
-    const t = String(title || '').toLowerCase().trim();
+    const t = prefix + String(title || '').toLowerCase().trim();
     if (t && plateauByTitle.has(t)) {
       return plateauByTitle.get(t);
     }
@@ -316,7 +317,7 @@ export function analyzeRoutineSplits(
 
     // Convert map to RoutineExercise array
     const routineExercises: RoutineExercise[] = Array.from(exerciseOrderMap.values()).map((item) => {
-      const plateau = getExercisePlateau(item.templateId, item.title);
+      const plateau = getExercisePlateau(item.templateId, item.title, group.rawTitle);
       const stuckSessions = plateau ? plateau.stuckSessions : 0;
       const status: PlateauStatus = plateau ? plateau.status : 'ok';
       const plateauWeeks = plateau ? plateau.stuckWeeks : 0;
@@ -328,8 +329,8 @@ export function analyzeRoutineSplits(
         : (plateau ? plateau.currentWeightKg : item.maxWeightKg);
 
       return {
-        templateId: plateau?.exerciseTemplateId || item.templateId,
-        title: plateau?.exerciseTitle || item.title,
+        templateId: item.templateId,
+        title: item.title,
         order: item.order,
         lastWeightKg: effectiveWeight,
         maxWeightKg: Math.max(item.maxWeightKg, plateauMaxWeight, effectiveWeight),
@@ -432,7 +433,7 @@ export function analyzeRoutineSplits(
         const templateId = String(ex.exercise_template_id || ex.template_id || ex.id || ex.title || '').trim();
         const rawTitle = String(ex.title || ex.name || 'Exercício').trim();
         const title = getDisplayExerciseTitle(rawTitle);
-        const plateau = getExercisePlateau(templateId, title);
+        const plateau = getExercisePlateau(templateId, title, hevyRoutine.title);
         const routineSets = Array.isArray(ex.sets) && ex.sets.length > 0 ? ex.sets : [];
         const normalSets = routineSets.filter((s: any) => {
           const type = String(s.type || s.set_type || '').toLowerCase().trim();
@@ -448,8 +449,8 @@ export function analyzeRoutineSplits(
         const status: PlateauStatus = plateau?.status || (stuckSessions >= 6 ? 'critical' : stuckSessions >= 3 ? 'warning' : 'ok');
 
         return {
-          templateId: plateau?.exerciseTemplateId || templateId,
-          title: plateau?.exerciseTitle || title,
+          templateId,
+          title,
           order: index + 1,
           lastWeightKg,
           maxWeightKg,

@@ -126,7 +126,8 @@ export default function AnalyticsSummaryView({
   onOpenPlateaus,
   onOpenWorkouts,
 }: AnalyticsSummaryViewProps) {
-  const metrics = buildAnalyticsMetrics(workouts, plateaus, routines);
+  const activePlateaus = plateaus.filter((plateau) => plateau.isActiveInCurrentRoutine !== false);
+  const metrics = buildAnalyticsMetrics(workouts, activePlateaus, routines.filter((routine) => !hiddenRoutineIds.includes(routine.id)));
   const {
     sortedWorkouts,
     weekWorkouts,
@@ -147,12 +148,13 @@ export default function AnalyticsSummaryView({
     })
     .slice(0, 5);
 
-  const bestProgressions = plateaus
+  const bestProgressions = activePlateaus
     .map((plateau) => {
       const history = plateau.sessionsHistory || [];
       if (history.length < 2) return null;
       const current = history[history.length - 1];
       const previous = history[history.length - 2];
+      if (current.exerciseTemplateId !== previous.exerciseTemplateId || plateau.status === 'pause_return') return null;
       const gain = current.weightKg - previous.weightKg;
       if (gain <= 0) return null;
       return { plateau, gain, previousWeight: previous.weightKg, currentWeight: current.weightKg };
@@ -202,7 +204,7 @@ export default function AnalyticsSummaryView({
       label: 'Exercícios travados',
       value: criticalPlateaus.length + warningPlateaus.length,
       unit: criticalPlateaus.length > 0 ? `${criticalPlateaus.length} críticos` : 'em atenção',
-      detail: `${plateaus.length} exercícios analisados`,
+      detail: `${activePlateaus.length} exercícios ativos analisados`,
       icon: AlertTriangle,
       tone: criticalPlateaus.length > 0 ? 'text-rose-300' : 'text-amber-300',
     },
@@ -390,7 +392,7 @@ export default function AnalyticsSummaryView({
           <div className="space-y-2">
             {stuckExercises.length > 0 ? stuckExercises.map((plateau) => (
               <button
-                key={plateau.exerciseTemplateId}
+                key={`${plateau.routineId}::${plateau.exerciseTemplateId}`}
                 type="button"
                 onClick={onOpenPlateaus}
                 className="w-full rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 p-3 text-left transition-colors"
@@ -426,7 +428,7 @@ export default function AnalyticsSummaryView({
           </div>
           <div className="space-y-2">
             {bestProgressions.length > 0 ? bestProgressions.map((item) => (
-              <div key={item.plateau.exerciseTemplateId} className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3">
+              <div key={`${item.plateau.routineId}::${item.plateau.exerciseTemplateId}`} className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="text-sm font-bold text-white text-wrap-safe">{item.plateau.exerciseTitle}</div>

@@ -30,6 +30,8 @@ import {
 import { motion } from 'motion/react';
 import { ExerciseEquivalenceGroup, ExercisePlateau, RoutineExercise, RoutineSplit } from '../types/plateau';
 import { analyzeRoutineSplits } from '../services/routineAnalyzer';
+import ExerciseHistoryChart from './ExerciseHistoryChart';
+import { normalizeRoutineTitle } from '../services/routineIdentity';
 
 interface RoutinesViewProps {
   workouts: any[];
@@ -84,6 +86,21 @@ export default function RoutinesView({
   const [showComparison, setShowComparison] = useState<boolean>(false);
   const [equivalenceModal, setEquivalenceModal] = useState<{ routine: RoutineSplit; exercise: RoutineExercise } | null>(null);
   const [equivalenceSearch, setEquivalenceSearch] = useState('');
+  const [sameMuscleConfirmed, setSameMuscleConfirmed] = useState(false);
+  const equivalenceCandidates = useMemo(() => {
+    if (!equivalenceModal) return [];
+    const candidates = new Map<string, RoutineExercise>();
+    for (const workout of workouts) {
+      if (normalizeRoutineTitle(workout.title) !== normalizeRoutineTitle(equivalenceModal.routine.title)) continue;
+      (workout.exercises || []).forEach((exercise: any, index: number) => {
+        const id = String(exercise.exercise_template_id || exercise.id || '');
+        if (!id || id === equivalenceModal.exercise.templateId) return;
+        if (index + 1 !== equivalenceModal.exercise.order) return;
+        candidates.set(id, { ...equivalenceModal.exercise, templateId: id, title: exercise.title, order: index + 1 });
+      });
+    }
+    return [...candidates.values()].filter((candidate) => candidate.title.toLowerCase().includes(equivalenceSearch.toLowerCase()));
+  }, [equivalenceModal, equivalenceSearch, workouts]);
 
   // Overall statistics for all active routines combined
   const overallStats = useMemo(() => {
@@ -162,16 +179,16 @@ export default function RoutinesView({
 
   const getPlateauForExercise = (exercise: RoutineExercise) => {
     const ids = [exercise.templateId, ...(exercise.equivalentTemplateIds || [])].filter(Boolean);
-    return plateaus.find((plateau) =>
+    return plateaus.find((plateau) => plateau.routineId === activeRoutine?.id && (
       plateau.exerciseTemplateId === exercise.templateId ||
       ids.includes(plateau.exerciseTemplateId) ||
-      (plateau.equivalentTemplateIds || []).some((templateId) => ids.includes(templateId))
+      (plateau.equivalentTemplateIds || []).some((templateId) => ids.includes(templateId)))
     );
   };
 
   const createEquivalenceGroup = (source: RoutineExercise, target: RoutineExercise, routine: RoutineSplit) => {
-    const sourceIds = [source.templateId, ...(source.equivalentTemplateIds || [])].filter(Boolean);
-    const targetIds = [target.templateId, ...(target.equivalentTemplateIds || [])].filter(Boolean);
+    const sourceIds = [source.templateId, ...(source.equivalentTemplateIds || [])].filter((id) => id && !id.startsWith('eq_'));
+    const targetIds = [target.templateId, ...(target.equivalentTemplateIds || [])].filter((id) => id && !id.startsWith('eq_'));
     const exerciseTemplateIds = Array.from(new Set([...sourceIds, ...targetIds]));
     const exerciseTitles = Array.from(new Set([
       source.title,
@@ -724,13 +741,13 @@ export default function RoutinesView({
                         : 'bg-black/20 border-white/5 hover:border-white/15'
                     }`}
                   >
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 min-w-0">
                       {/* Left: Exercise Name, Order and Stagnation Badge */}
-                      <div className="flex items-start gap-3">
+                      <div className="flex items-start gap-3 min-w-0 flex-1">
                         <span className="w-6 h-6 rounded-lg bg-white/5 text-white/50 text-xs font-mono font-bold flex items-center justify-center shrink-0 mt-0.5">
                           {ex.order || idx + 1}
                         </span>
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             <h5 className="text-sm font-bold text-white text-wrap-safe">
                               {ex.title}
@@ -765,6 +782,10 @@ export default function RoutinesView({
                           </div>
 
                           {/* Actionable Plateau Tip */}
+                          <p className="mt-2 text-xs font-semibold text-white/75">
+                            {exercisePlateau?.sessionsHistory.length || 0} sessões neste treino · {ex.stuckSessions} sem progresso
+                            {ex.status === 'pause_return' ? ' · retorno de pausa' : ex.stuckSessions < 3 ? ` · atenção a partir de 3 (${3 - ex.stuckSessions} restantes)` : ex.stuckSessions < 6 ? ` · crítico a partir de 6 (${6 - ex.stuckSessions} restantes)` : ' · revisar progressão'}
+                          </p>
                           {ex.suggestion && (
                             <p className="text-[11px] text-white/60 mt-1 max-w-xl leading-relaxed text-wrap-safe">
                               <span className="text-white/80 font-medium">Estratégia:</span> {ex.suggestion}
@@ -785,7 +806,7 @@ export default function RoutinesView({
                                     className="w-2 h-2 rounded-full shrink-0"
                                     style={{ backgroundColor: session.variationColor || '#4FACFE' }}
                                   />
-                                  {session.weightKg}kg
+                                    {session.weightKg}kg · {session.totalReps || 0} reps
                                 </span>
                               ))}
                               {exercisePlateau?.isEquivalentGroup && (
@@ -795,12 +816,14 @@ export default function RoutinesView({
                               )}
                             </div>
                           )}
+                          {exercisePlateau?.isEquivalentGroup && <ExerciseHistoryChart sessions={exercisePlateau.sessionsHistory} />}
                           <div className="mt-2 flex flex-wrap gap-2">
                             <button
                               type="button"
                               onClick={() => {
                                 setEquivalenceModal({ routine: activeRoutine, exercise: ex });
                                 setEquivalenceSearch('');
+                                setSameMuscleConfirmed(false);
                               }}
                               className="inline-flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 px-2.5 py-1 text-[10px] font-bold text-white/70 hover:text-white hover:bg-white/10 transition-colors"
                             >
@@ -880,7 +903,7 @@ export default function RoutinesView({
               />
 
               <div className="max-h-[45vh] overflow-y-auto custom-scrollbar space-y-2 pr-1">
-                {equivalenceModal.routine.exercises
+                {equivalenceCandidates
                   .filter((candidate) => candidate.templateId !== equivalenceModal.exercise.templateId)
                   .filter((candidate) => {
                     const query = equivalenceSearch.trim().toLowerCase();
@@ -891,8 +914,9 @@ export default function RoutinesView({
                     <button
                       key={`${candidate.templateId}_${candidate.order}`}
                       type="button"
+                      disabled={!sameMuscleConfirmed}
                       onClick={() => createEquivalenceGroup(equivalenceModal.exercise, candidate, equivalenceModal.routine)}
-                      className="w-full rounded-2xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/5 hover:border-brand-primary/30 p-3 text-left transition-colors flex items-center justify-between gap-3"
+                      className="w-full rounded-2xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/5 hover:border-brand-primary/30 p-3 text-left transition-colors flex items-center justify-between gap-3 disabled:opacity-40"
                     >
                       <div className="min-w-0">
                         <div className="text-sm font-bold text-white text-wrap-safe">{candidate.title}</div>
@@ -904,10 +928,11 @@ export default function RoutinesView({
                     </button>
                   ))}
               </div>
-
-              <p className="text-[11px] text-white/35 leading-relaxed">
-                A partir daí, carga, histórico e estagnação passam a considerar qualquer variação dentro do grupo.
-              </p>
+              {equivalenceCandidates.length === 0 && <p className="text-xs text-white/50">Nenhuma outra variação encontrada neste slot do treino.</p>}
+              <label className="flex items-center gap-2 text-xs text-white/70">
+                <input type="checkbox" checked={sameMuscleConfirmed} onChange={(event) => setSameMuscleConfirmed(event.target.checked)} />
+                As variações trabalham o mesmo grupo muscular principal
+              </label>
             </div>
           </div>
         </div>

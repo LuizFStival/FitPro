@@ -1,4 +1,5 @@
 import { ExerciseEquivalenceGroup, ExercisePlateau, ExerciseSession, PlateauStatus } from '../types/plateau';
+import { getRoutineStorageId } from './routineIdentity';
 
 export interface WorkoutInput {
   id?: string;
@@ -54,6 +55,7 @@ export function calculateExercisePlateaus(
   // Map by exercise_template_id or equivalence group -> { templateId, title, sessions: ExerciseSession[] }
   const exerciseMap = new Map<string, {
     templateId: string;
+    routineId: string;
     title: string;
     equivalentTemplateIds: string[];
     variationTitles: string[];
@@ -69,6 +71,7 @@ export function calculateExercisePlateaus(
 
     const workoutId = workout.id || `${sessionDate.getTime()}`;
     const workoutTitle = (workout.title || '').trim() || 'Treino Geral';
+    const routineId = getRoutineStorageId(workoutTitle);
 
     const exercises = workout.exercises || [];
     for (const ex of exercises) {
@@ -76,8 +79,9 @@ export function calculateExercisePlateaus(
       if (!templateId) continue; // Must have exercise_template_id
 
       const exTitle = String(ex.title || '').trim() || 'Exercício';
-      const equivalenceGroup = equivalentByTemplateId.get(templateId);
-      const groupKey = equivalenceGroup?.id || templateId;
+      const matchedGroup = equivalentByTemplateId.get(templateId);
+      const equivalenceGroup = matchedGroup?.routineId === routineId ? matchedGroup : undefined;
+      const groupKey = `${routineId}::${equivalenceGroup?.id || templateId}`;
       const groupTitle = equivalenceGroup?.title || exTitle;
       const equivalentTemplateIds = equivalenceGroup?.exerciseTemplateIds || [templateId];
       const variationTitles = equivalenceGroup?.exerciseTitles || [exTitle];
@@ -103,11 +107,15 @@ export function calculateExercisePlateaus(
 
       // 2. Pegar o maior weight_kg usado naquela sessão para aquele exercício = "carga do dia".
       const sessionMaxWeight = Math.max(...validWeights);
+      const totalReps = normalSets.reduce((sum: number, set: any) => sum + Math.max(0, Number(set.reps) || 0), 0);
+      const volumeKg = normalSets.reduce((sum: number, set: any) => sum + Math.max(0, Number(set.weight_kg) || 0) * Math.max(0, Number(set.reps) || 0), 0);
+      const bestSetReps = Math.max(0, ...normalSets.filter((set: any) => Number(set.weight_kg) === sessionMaxWeight).map((set: any) => Number(set.reps) || 0));
 
       let group = exerciseMap.get(groupKey);
       if (!group) {
         group = {
-          templateId: groupKey,
+          templateId: equivalenceGroup?.id || templateId,
+          routineId,
           title: groupTitle,
           equivalentTemplateIds,
           variationTitles,
@@ -127,18 +135,24 @@ export function calculateExercisePlateaus(
       }
 
       // Check if this workout already recorded a session for this exercise (avoid double counting if exercise appears twice)
-      const existingSessionIndex = group.sessions.findIndex(s => s.workoutId === workoutId);
+      const existingSessionIndex = group.sessions.findIndex(s => s.workoutId === workoutId && s.exerciseTemplateId === templateId);
       if (existingSessionIndex >= 0) {
         group.sessions[existingSessionIndex].weightKg = Math.max(
           group.sessions[existingSessionIndex].weightKg,
           sessionMaxWeight
         );
+        group.sessions[existingSessionIndex].totalReps = (group.sessions[existingSessionIndex].totalReps || 0) + totalReps;
+        group.sessions[existingSessionIndex].volumeKg = (group.sessions[existingSessionIndex].volumeKg || 0) + volumeKg;
+        group.sessions[existingSessionIndex].bestSetReps = Math.max(group.sessions[existingSessionIndex].bestSetReps || 0, bestSetReps);
       } else {
         const variationIndex = Math.max(0, group.equivalentTemplateIds.indexOf(templateId));
         group.sessions.push({
           date: sessionDate,
           workoutTitle,
           weightKg: sessionMaxWeight,
+          totalReps,
+          volumeKg,
+          bestSetReps,
           workoutId,
           exerciseTemplateId: templateId,
           exerciseTitle: exTitle,
@@ -165,7 +179,19 @@ export function calculateExercisePlateaus(
     const lastSession = sessions[sessions.length - 1];
     const currentWeight = lastSession.weightKg;
     const lastGapDays = lastSession.daysSincePrevious || 0;
-    const isPauseReturn = sessions.length > 1 && lastGapDays >= pauseThresholdDays;
+    const isPauseReturn = sessions.length > 1 && lastGapDays > pauseThresholdDays;
+
+    // Compare each variation with its own previous load, then count group sessions.
+    const previousLoads = new Map<string, ExerciseSession>();
+    const progressed = sessions.map((session) => {
+      if ((session.daysSincePrevious || 0) > pauseThresholdDays) previousLoads.clear();
+      const previous = previousLoads.get(session.exerciseTemplateId);
+      previousLoads.set(session.exerciseTemplateId, session);
+      return previous === undefined || session.weightKg > previous.weightKg ||
+        (session.weightKg === previous.weightKg && (session.bestSetReps || 0) > (previous.bestSetReps || 0)) ||
+        (session.volumeKg || 0) > (previous.volumeKg || 0) ||
+        (session.weightKg === previous.weightKg && (session.totalReps || 0) > (previous.totalReps || 0));
+    });
 
     // 4. A partir da sessão mais recente, andar pra trás: enquanto a carga do dia for igual à carga da última sessão,
     // conta como "sessão parada". Parar de contar na primeira sessão com carga diferente.
@@ -177,7 +203,8 @@ export function calculateExercisePlateaus(
       plateauStartIndex = sessions.length - 1;
     } else {
       for (let i = sessions.length - 1; i >= 0; i--) {
-        if (sessions[i].weightKg === currentWeight) {
+        if ((sessions[i].daysSincePrevious || 0) > pauseThresholdDays) break;
+        if (!progressed[i]) {
           stuckSessions++;
           plateauStartIndex = i;
         } else {
@@ -208,12 +235,13 @@ export function calculateExercisePlateaus(
       status = 'ok';
     }
 
-    const isActiveInCurrentRoutine = activeTemplateSet.size === 0
+    const isActiveInCurrentRoutine = options.activeTemplateIds === undefined
       ? true
       : group.equivalentTemplateIds.some((templateId) => activeTemplateSet.has(templateId));
 
     plateaus.push({
       exerciseTemplateId: group.templateId,
+      routineId: group.routineId,
       exerciseTitle: group.title,
       routineTitle: lastSession.workoutTitle || 'Geral',
       equivalentTemplateIds: group.equivalentTemplateIds,

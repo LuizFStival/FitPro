@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import ExerciseHistoryChart from './ExerciseHistoryChart';
 import { ExercisePlateau, PlateauStatus } from '../types/plateau';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -443,12 +444,13 @@ export default function ExercisePlateauView({
               </thead>
               <tbody className="divide-y divide-white/5 text-sm">
                 {filteredPlateaus.map((item) => {
-                  const isExpanded = expandedId === item.exerciseTemplateId;
+                  const rowId = `${item.routineId}::${item.exerciseTemplateId}`;
+                  const isExpanded = expandedId === rowId;
 
                   return (
-                    <React.Fragment key={item.exerciseTemplateId}>
+                    <React.Fragment key={rowId}>
                       <tr 
-                        onClick={() => setExpandedId(isExpanded ? null : item.exerciseTemplateId)}
+                        onClick={() => setExpandedId(isExpanded ? null : rowId)}
                         className={`hover:bg-white/[0.04] transition-colors cursor-pointer group ${
                           isExpanded ? 'bg-white/[0.03]' : ''
                         }`}
@@ -578,6 +580,7 @@ export default function ExercisePlateauView({
                                 </span>
                               </div>
 
+                              <ExerciseHistoryChart sessions={item.sessionsHistory} />
                               {/* Timeline of sessions */}
                               <div className="flex items-center gap-2 overflow-x-auto py-2 pr-4 custom-scrollbar">
                                 {item.sessionsHistory.map((sess, sIdx) => {
