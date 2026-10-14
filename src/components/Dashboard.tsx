@@ -14,7 +14,7 @@ import WorkoutsView from './WorkoutsView';
 import RoutinesView from './RoutinesView';
 import ActiveWorkoutTracker from './ActiveWorkoutTracker';
 import ActiveWorkoutBar from './ActiveWorkoutBar';
-import AnalyticsSummaryView from './AnalyticsSummaryView';
+import AnalyticsSummaryView from './TrainingEvaluationView';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -956,6 +956,7 @@ export default function Dashboard({ user }: DashboardProps) {
           />
         ) : (
           <AnalyticsSummaryView
+            userId={user.uid}
             workouts={workouts}
             plateaus={plateaus}
             routines={routines}

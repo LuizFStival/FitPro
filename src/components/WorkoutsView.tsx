@@ -238,6 +238,10 @@ export default function WorkoutsView({
 
     for (const workout of workouts) {
       const summary = workoutStagnationMap.get(workout.id);
+      const date = parseWorkoutDate(workout).getTime();
+      if (date < Date.now() - 30 * 86400000 || isWorkoutHidden(workout) || isWorkoutBeginnerOrLegacy(workout)) continue;
+      if (!summary || summary.criticalCount + summary.warningCount === 0) continue;
+      if (workouts.some((other) => getRoutineStorageId(other.title) === getRoutineStorageId(workout.title) && parseWorkoutDate(other).getTime() > date)) continue;
       if (summary && summary.totalExercisesAnalyzed > 0) {
         if (!topWorkout || summary.avgStagnatedSessions > topWorkout.summary.avgStagnatedSessions) {
           topWorkout = { workout, summary };
@@ -251,7 +255,7 @@ export default function WorkoutsView({
     }
 
     return topWorkout;
-  }, [workouts, workoutStagnationMap]);
+  }, [workouts, workoutStagnationMap, hiddenRoutineIds]);
 
   // Aggregate Routine-level stagnation (grouping by workout title)
   const routineStagnationSummary = useMemo(() => {
