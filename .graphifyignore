@@ -1,0 +1,14 @@
+.git/
+node_modules/
+**/node_modules/
+.venv/
+.codex/
+.agents/
+graphify-out/
+dist/
+fitpro/dist-pulse/
+.vercel/
+.env*
+fitpro/pulse/public/
+fitpro/public/
+fitpro/src/lib/body-paths.js

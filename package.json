@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "tsx server.ts",
     "start": "node server.ts",
-    "build": "vite build",
+    "build": "vite build && npm --prefix fitpro ci --no-audit --no-fund && npm --prefix fitpro run build:pulse && node scripts/assemble-fitpro.mjs",
+    "test:fitpro": "npm --prefix fitpro run test:pulse && node --test scripts/fitpro-isolation.test.mjs",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit"

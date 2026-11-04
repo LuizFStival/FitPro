@@ -1,5 +1,5 @@
 {
-  "exclude": ["node_modules", "dist", "graphify-out"],
+  "exclude": ["node_modules", "dist", "graphify-out", "fitpro"],
   "compilerOptions": {
     "target": "ES2022",
     "experimentalDecorators": true,

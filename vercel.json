@@ -1,8 +1,16 @@
 {
   "version": 2,
-  "buildCommand": "vite build",
+  "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
+    {
+      "source": "/fitpro/api/hevy",
+      "destination": "/api/fitpro-hevy"
+    },
+    {
+      "source": "/fitpro/:path*",
+      "destination": "/fitpro/index.html"
+    },
     {
       "source": "/api/(.*)",
       "destination": "/api/index"
@@ -10,6 +18,72 @@
     {
       "source": "/(.*)",
       "destination": "/index.html"
+    }
+  ],
+  "functions": {
+    "api/fitpro-hevy.mjs": {
+      "maxDuration": 20
+    }
+  },
+  "redirects": [
+    {
+      "source": "/fitpro",
+      "destination": "/fitpro/",
+      "permanent": true
+    }
+  ],
+  "headers": [
+    {
+      "source": "/fitpro/:path*",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+        }
+      ]
+    },
+    {
+      "source": "/fitpro/sw.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        },
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/fitpro/"
+        }
+      ]
+    },
+    {
+      "source": "/sw.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
+    },
+    {
+      "source": "/fitpro/index.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        }
+      ]
     }
   ]
 }

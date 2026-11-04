@@ -1,0 +1,14 @@
+{
+  "buildCommand": "npm run build:pulse",
+  "outputDirectory": "dist-pulse",
+  "rewrites": [
+    {
+      "source": "/fitpro/api/hevy",
+      "destination": "/api/hevy"
+    },
+    {
+      "source": "/fitpro/:path*",
+      "destination": "/:path*"
+    }
+  ]
+}

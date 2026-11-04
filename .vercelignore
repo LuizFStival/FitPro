@@ -1,0 +1,11 @@
+.git
+.codex
+.agents
+.venv
+graphify-out
+node_modules
+fitpro/node_modules
+dist
+fitpro/dist-pulse
+.env*
+*.log

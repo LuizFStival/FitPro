@@ -1,0 +1,23 @@
+{
+  "name": "fitpro-hevy-analytics",
+  "private": true,
+  "version": "1.4.3",
+  "type": "module",
+  "scripts": {
+    "dev:pulse": "vite --config vite.pulse.config.js",
+    "build:pulse": "vite build --config vite.pulse.config.js && node scripts/pulse-source.mjs",
+    "preview:pulse": "vite preview --config vite.pulse.config.js",
+    "test:pulse": "vitest run --config vite.pulse.test.config.js"
+  },
+  "license": "AGPL-3.0-or-later",
+  "dependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.1.2",
+    "happy-dom": "^20.14.6",
+    "vite": "^8.3.4",
+    "vitest": "^4.1.12"
+  }
+}
