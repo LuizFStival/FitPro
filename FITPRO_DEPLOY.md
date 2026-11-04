@@ -36,3 +36,11 @@ Abrir /fitpro/ no Safari, conectar a Hevy no próprio app e marcar Lembrar chave
 ## Pontos a complementar
 
 Aceite físico no iPhone e consulta pós-treino. Filtros, agenda e nomes são locais por aparelho. Não há gravação de treino nesta versão.
+
+## Publicação confirmada — 04/11/2026
+
+- Commit de implementação 5f16dfc enviado a origin/main (LuizFStival/FitPro).
+- Deploy de produção 4Uq8TMqpMfpbxNYuRjuYA3dcLbe4, estado READY, associado a project-01anu.vercel.app.
+- Acesso público sem bypass: raiz e /fitpro/ responderam 200; manifesto e worker responderam com seus tipos corretos; API sem chave respondeu JSON 401 e no-store.
+- Consulta real pelo formulário da URL de produção concluída e rotinas exibidas no navegador. Nenhuma chave foi incluída no repositório ou persistida pelo agente.
+- A instalação e o teste físico no iPhone continuam a cargo do usuário; o ensaio no navegador desktop não substitui esse aceite.
