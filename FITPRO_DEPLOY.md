@@ -53,3 +53,11 @@ Aceite físico no iPhone e consulta pós-treino. Filtros, agenda e nomes são lo
 - Acesso público sem bypass: raiz e /fitpro/ responderam 200; manifesto e worker responderam com seus tipos corretos; API sem chave respondeu JSON 401 e no-store.
 - Consulta real pelo formulário da URL de produção concluída e rotinas exibidas no navegador. Nenhuma chave foi incluída no repositório ou persistida pelo agente.
 - A instalação e o teste físico no iPhone continuam a cargo do usuário; o ensaio no navegador desktop não substitui esse aceite.
+
+## Atualização publicada — 10/11/2026
+
+- Commit `acc65e7`: nomes pt-BR, 24 associações de guias de execução, player sob demanda e ficha com detalhes recolhidos. Enviado a `origin/main`.
+- Build concluído; 44 testes FitPro e 3 de isolamento passaram. O happy-dom informa que não carrega iframes externos nos testes, conforme configurado; o player foi conferido separadamente no navegador.
+- Prévia `BRD1jNXZpUmVGXivkjGZdsmdkrs9` e produção `ACywUoV8ZDfAbUEr3QECNi6rbmyM`, ambas READY. Domínio público preservado: https://project-01anu.vercel.app/fitpro/.
+- HTTP público: raiz, FitPro, manifesto e worker 200; API sem chave 401. Bundle publicado `index-DCY7O90P.js` contém os nomes pt-BR e o player.
+- Prévia local com dados fictícios: ficha B traduzida, vídeo de panturrilha carregado, viewport 375 px e conteúdo 375 px (sem overflow). Não representa aceite em um iPhone físico nem revisão profissional de técnica de todos os vídeos.
