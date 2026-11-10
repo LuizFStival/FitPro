@@ -4,6 +4,7 @@ import useHevy from './useHevy.js'
 import './pulse.css'
 import './opengym.css'
 import { OpenGymHome, OpenGymPlan, OpenGymStats } from './OpenGymViews.jsx'
+import ExecutionVideo from './ExecutionVideo.jsx'
 
 const number = value => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(value)
 const date = value => value ? new Date(value).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : 'Sem sessão'
@@ -19,18 +20,22 @@ function Glyph({ name }) {
 }
 
 function Exercise({ item, rename }) {
-  return <details className="exercise">
-    <summary><span className="order">{item.order + 1}</span><div className="exercise-main"><strong>{item.title}</strong><span className={`status ${item.status}`}>{statusText(item)}{item.streak > 0 && !['stale', 'return'].includes(item.status) ? ` · ${item.streak} sem progresso` : ''}</span></div><span className="chevron">⌄</span></summary>
+  const [open, setOpen] = useState(false)
+  return <details className="exercise" onToggle={event => { if (event.target === event.currentTarget) setOpen(event.currentTarget.open) }}>
+    <summary><span className="order">{item.order + 1}</span><div className="exercise-main"><strong>{item.title}</strong><span className={`status ${item.status}`}>{statusText(item)}{item.streak > 0 && !['stale', 'return'].includes(item.status) ? ` · ${item.streak} sem progresso` : ''}</span>{item.guide && <small className="execution-hint">▶ Demonstração disponível</small>}</div><span className="chevron">⌄</span></summary>
     <div className="exercise-body">
+      {open && <ExecutionVideo key={item.guide?.video || item.id} guide={item.guide} title={item.title} />}
       <p>{explanation(item)}</p>
       {item.latest && <><div className="metric-row"><div><small>Última carga</small><b>{number(item.latest.weight)} <small>kg</small></b></div><div><small>Reps totais</small><b>{item.latest.reps}</b></div><div><small>Próxima sessão</small><b>#{item.nextSession}</b></div></div>
         <p className="muted">{date(item.latest.at)} · {item.latest.sets} séries normais · {number(item.latest.volume)} kg de volume</p>
         <div className="timeline" aria-label="Evolução nas últimas oito sessões">{item.sessions.slice(-8).map(s => <span key={s.id} className={s.trend} title={`${date(s.at)}: ${trendNames[s.trend]}`}><b>{symbols[s.trend]}</b><small>{date(s.at)}</small></span>)}</div>
-        <div className="table-wrap"><table><caption>Últimas sessões deste exercício neste treino</caption><thead><tr><th>Data</th><th>Kg</th><th>Reps</th><th>Evolução</th></tr></thead><tbody>{item.sessions.slice(-6).reverse().map(s => <tr key={s.id}><td>{date(s.at)}</td><td>{number(s.weight)}</td><td>{s.reps}</td><td>{trendNames[s.trend]}</td></tr>)}</tbody></table></div></>}
+        <details className="exercise-extra"><summary>Ver últimas sessões</summary><div className="table-wrap"><table><caption>Últimas sessões deste exercício neste treino</caption><thead><tr><th>Data</th><th>Kg</th><th>Reps</th><th>Evolução</th></tr></thead><tbody>{item.sessions.slice(-6).reverse().map(s => <tr key={s.id}><td>{date(s.at)}</td><td>{number(s.weight)}</td><td>{s.reps}</td><td>{trendNames[s.trend]}</td></tr>)}</tbody></table></div></details></>}
+      <details className="exercise-extra"><summary>Nome e identificação do exercício</summary>
       <p className="muted">Nome na API: {item.apiTitle || 'não informado'}<br />ID Hevy: {item.id}</p>
       <form onSubmit={event => { event.preventDefault(); const form = event.currentTarget; rename(item.id, new FormData(form).get('name').trim()); }}>
         <label>Nome que você usa no Hevy<input name="name" maxLength={120} defaultValue={item.title} key={item.title} /></label><button className="quiet" type="submit">Salvar nome neste aparelho</button>
       </form>
+      </details>
     </div>
   </details>
 }
@@ -75,14 +80,14 @@ export default function Pulse({ previewSnapshot = null }) {
         : tab === 'plan' ? <OpenGymPlan {...{ api, data, openRoutine }} />
         : tab === 'stats' ? <OpenGymStats {...{ api, data, now, go }} /> : tab === 'workout' ? <>
         <label className="select-label">Qual treino você vai fazer?<select value={routine?.id || ''} onChange={e => setRoutineId(e.target.value)}>{data.active.map(r => <option key={r.id} value={r.id}>{r.title}</option>)}</select></label>
-        {routine ? <><div className="workout-heading"><div><h2>{shortTitle(routine.title)}</h2><p>Próxima sessão #{routine.nextSession} · último treino {date(routine.lastAt)}</p></div><span className="pill">{routine.alerts} em atenção</span></div><p className="muted">Na ordem da rotina Hevy. Toque no exercício para ver a comparação.</p>{routine.exercises.map((e, i) => <Exercise key={`${e.key}-${i}`} item={e} rename={rename} />)}<p className="footnote">Registre as séries na Hevy. Depois de finalizar, volte aqui para atualizar sua evolução.</p></> : <p className="empty">Nenhuma rotina ativa. Escolha as atuais em Configurações.</p>}
+        {routine ? <><div className="workout-heading"><div><h2>{shortTitle(routine.title)}</h2><p>Próxima sessão #{routine.nextSession} · último treino {date(routine.lastAt)}</p></div><span className="pill">{routine.alerts} em atenção</span></div><p className="muted">Na ordem da Hevy. Toque para ver a execução e sua evolução.</p>{routine.exercises.map((e, i) => <Exercise key={`${e.key}-${i}`} item={e} rename={rename} />)}<p className="footnote">Registre as séries na Hevy. Depois de finalizar, volte aqui para atualizar sua evolução.</p></> : <p className="empty">Nenhuma rotina ativa. Escolha as atuais em Configurações.</p>}
       </> : tab === 'alerts' ? <>
         <div className="card"><h2>Estagnação por treino</h2><p>3 a 5 sessões sem progresso: atenção. 6 ou mais: estagnação persistente. Aumento de carga, repetições na mesma carga ou volume reinicia a contagem.</p><p className="muted">Somente exercícios das rotinas ativas com sessão nos últimos 30 dias. Retornos após pausa ficam neutros.</p></div>
         {data.alerts.length ? data.alerts.map(e => <section key={e.key}><h3>{e.routineTitle}</h3><Exercise item={e} rename={rename} /></section>) : <div className="empty"><span className="green">✓</span><h2>Sem alertas recentes</h2><p>Consulte cada treino para ver o histórico e exercícios sem dados suficientes.</p></div>}
       </> : <>
         <Connection api={api} demo={!!previewSnapshot} />
         <section className="card"><h2>Rotinas visíveis</h2><p className="muted">Ative apenas os treinos atuais. Desativar não apaga o histórico na Hevy.</p>{data.routines.map(r => <label className="routine-toggle" key={r.id}><span>{r.title}</span><input type="checkbox" checked={r.active} onChange={e => api.setPreferences(p => ({ ...p, active: { ...p.active, [r.id]: e.target.checked } }))} /></label>)}</section>
-        <section className="card"><h2>Regras da análise</h2><label>Identificar retorno após pausa de<select value={api.preferences.pauseDays || 14} onChange={e => api.setPreferences(p => ({ ...p, pauseDays: Number(e.target.value) }))}>{[10, 14, 21, 30].map(n => <option key={n} value={n}>Mais de {n} dias</option>)}</select></label><p className="muted">Uma volta após pausa cria uma nova referência e não entra na sequência de estagnação.</p><p className="muted">{data.unmatched} sessão(ões) sem vínculo inequívoco com uma rotina atual. Permanecem na frequência e no histórico, sem misturar os alertas.</p><p className="muted">A API pode enviar nomes em inglês. Abra o exercício e salve o nome que você usa; o ID de origem permanece visível. Equivalências da versão anterior ainda não são importadas.</p></section>
+        <section className="card"><h2>Regras da análise</h2><label>Identificar retorno após pausa de<select value={api.preferences.pauseDays || 14} onChange={e => api.setPreferences(p => ({ ...p, pauseDays: Number(e.target.value) }))}>{[10, 14, 21, 30].map(n => <option key={n} value={n}>Mais de {n} dias</option>)}</select></label><p className="muted">Uma volta após pausa cria uma nova referência e não entra na sequência de estagnação.</p><p className="muted">{data.unmatched} sessão(ões) sem vínculo inequívoco com uma rotina atual. Permanecem na frequência e no histórico, sem misturar os alertas.</p><p className="muted">Os exercícios reconhecidos aparecem em português em todas as telas. Você pode personalizar o nome na ficha; o original e o ID ficam em “Nome e identificação”. Nomes personalizados são locais. Equivalências da versão anterior ainda não são importadas.</p></section>
         <section className="card"><h2>Sobre esta versão</h2><p>FitPro · modo de análise da Hevy, baseado no openGym. Sem gravação de treinos ou banco próprio. Atualização ao abrir, retomar o app e a cada 5 minutos visível.</p><p className="muted">Para instalar no iPhone: Safari → Compartilhar → Adicionar à Tela de Início.</p><a href="/fitpro/source.tar.gz">Código-fonte desta versão (AGPL)</a> · <a href="https://github.com/DuarteSantos8/openGym" target="_blank" rel="noreferrer">openGym</a></section>
       </>}
     </main><nav aria-label="Navegação principal">{[['home', 'Início'], ['plan', 'Plano'], ['workout', 'Treino'], ['stats', 'Estatísticas'], ['settings', 'Config']].map(([id, label]) => <button key={id} aria-current={tab === id ? 'page' : undefined} className={tab === id ? 'active' : ''} onClick={() => go(id)}><Glyph name={id} /><span>{label}</span></button>)}</nav>

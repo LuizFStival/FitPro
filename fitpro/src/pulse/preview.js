@@ -2,12 +2,12 @@
 import { dayKey, shiftDay, weekStart } from './insights.js'
 export function makePreview() {
   const now = Date.now()
-  const names = [['Supino Sentado (Máquina)', 'Supino Inclinado (Halter)', 'Tríceps na Polia com Corda', 'Abdominal (Máquina)'],
-    ['Leg Press 45° (Máquina)', 'Agachamento no Smith (Máquina)', 'Mesa Flexora (Máquina)', 'Panturrilha Sentado (Máquina)', 'Abdominal (Máquina)'],
-    ['Puxada Alta (Cabo)', 'Remada Sentada com Pegada em V (Cabo)', 'Rosca Direta (Barra W)', 'Abdominal (Máquina)']]
+  const names = [['Chest Press (Machine)', 'Incline Bench Press (Dumbbell)', 'Triceps Rope Pushdown', 'Crunch (Machine)'],
+    ['Leg Press (Machine)', 'Squat (Smith Machine)', 'Lying Leg Curl (Machine)', 'Seated Calf Raise', 'Crunch (Machine)'],
+    ['Lat Pulldown (Cable)', 'Seated Cable Row - V Grip (Cable)', 'EZ Bar Biceps Curl', 'Crunch (Machine)']]
   const groups = [['chest', 'chest', 'triceps', 'abdominals'], ['quadriceps', 'quadriceps', 'hamstrings', 'calves', 'abdominals'], ['lats', 'upper_back', 'biceps', 'abdominals']]
   const secondary = [['shoulders', 'triceps'], ['glutes', 'hamstrings'], ['biceps', 'forearms']]
-  const routines = names.map((list, r) => ({ id: 'demo-' + r, title: 'Treino ' + 'ABC'[r] + ' · Demonstração', exercises: list.map((title, index) => ({ index, title, exercise_template_id: title.includes('Abdominal') ? 'demo-abs' : 'demo-' + r + '-' + index })) }))
+  const routines = names.map((list, r) => ({ id: 'demo-' + r, title: 'Treino ' + 'ABC'[r] + ' · Demonstração', exercises: list.map((title, index) => ({ index, title, exercise_template_id: title === 'Crunch (Machine)' ? 'demo-abs' : 'demo-' + r + '-' + index })) }))
   const templates = [...new Map(routines.flatMap((r, ri) => r.exercises.map((e, ei) => ({ id: e.exercise_template_id, title: e.title, primary_muscle_group: groups[ri][ei], secondary_muscle_groups: ei === 0 ? secondary[ri] : [] }))).map(t => [t.id, t])).values()]
   const workouts = routines.flatMap((r, i) => Array.from({ length: 12 }, (_, n) => {
     const start = shiftDay(weekStart(now), (n - 11) * 7 + i * 2); start.setHours(7, 0, 0, 0)

@@ -1,4 +1,5 @@
 // Read-only Hevy analysis. Identity is routine + template, never a translated name.
+import { portugueseExerciseName, executionGuide } from './exercisePresentation.js'
 export const DAY = 86400000
 export const normalizeTitle = value => String(value || '').trim().toLocaleLowerCase('pt-BR').replace(/\s+/g, ' ')
 const finite = value => value !== null && value !== '' && Number.isFinite(Number(value)) && Number(value) >= 0
@@ -30,6 +31,7 @@ export function progressReasons(current, previous) {
 
 export function analyze(snapshot, preferences = {}, now = Date.now()) {
   const routines = snapshot?.routines || []
+  const templates = new Map((snapshot?.templates || []).map(template => [template.id, template]))
   const pauseDays = Math.min(30, Math.max(10, Number(preferences.pauseDays) || 14))
   const workouts = [...new Map((snapshot?.workouts || []).filter(w => w.id && w.start_time && Number.isFinite(Date.parse(w.start_time)) && Date.parse(w.start_time) <= now).map(w => [w.id, w])).values()]
     .sort((a, b) => Date.parse(a.start_time) - Date.parse(b.start_time))
@@ -38,6 +40,7 @@ export function analyze(snapshot, preferences = {}, now = Date.now()) {
     const matches = mapped.filter(m => m.routine?.id === routine.id).map(m => m.workout)
     const exercises = ordered(routine.exercises).map(exercise => {
       const id = exercise.exercise_template_id
+      const template = templates.get(id)
       const key = `${routine.id}::${id}`
       const sessions = []
       let streak = 0
@@ -56,7 +59,10 @@ export function analyze(snapshot, preferences = {}, now = Date.now()) {
       const latest = sessions.at(-1)
       const age = latest ? Math.floor((now - latest.at) / DAY) : null
       const status = !latest ? 'empty' : age > 30 ? 'stale' : latest.trend === 'return' ? 'return' : sessions.length < 2 ? 'new' : streak >= 6 ? 'critical' : streak >= 3 ? 'warning' : latest.trend === 'up' ? 'up' : 'ok'
-      return { key, id, title: preferences.names?.[id] || exercise.title || 'Exercício sem nome', apiTitle: exercise.title,
+      const apiTitle = exercise.title || template?.title
+      const displayTitle = preferences.names?.[id] || apiTitle
+      return { key, id, title: template?.is_custom ? displayTitle || 'Exercício sem nome' : portugueseExerciseName(displayTitle), apiTitle,
+        guide: executionGuide(apiTitle, template?.title, template?.is_custom === true),
         order: exercise.index ?? exercise.position, routineId: routine.id, routineTitle: routine.title, sessions, latest, streak, status, age,
         nextSession: sessions.length + 1 }
     })

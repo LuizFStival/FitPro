@@ -32,8 +32,25 @@ it('automatically consults Hevy with a remembered key and opens exercises in rou
   expect(container.textContent).toContain('3 sessão(ões) seguida(s)')
   await click('Início')
   await click('Ver estagnação por treino →')
-  expect(container.querySelectorAll('details')).toHaveLength(2)
+  expect(container.querySelectorAll('details.exercise')).toHaveLength(2)
   expect(container.textContent).toContain('Treino B')
+})
+
+it('loads the execution player only on request and removes it when the exercise closes', async () => {
+  localStorage.setItem(STORAGE, JSON.stringify({ version: 1, snapshot, preferences: {} }))
+  await mount(); await click('Treino')
+  expect(container.querySelector('iframe')).toBeNull()
+  const exercise = container.querySelectorAll('details.exercise')[1]
+  await act(async () => { exercise.open = true; exercise.dispatchEvent(new Event('toggle')) })
+  const play = exercise.querySelector('.execution-play')
+  expect(play.textContent).toContain('Ver execução')
+  await act(async () => play.click())
+  const player = exercise.querySelector('iframe')
+  expect(player.src).toContain('https://www.youtube-nocookie.com/embed/5uTPwcdt4gQ')
+  expect(player.getAttribute('referrerpolicy')).toBe('strict-origin-when-cross-origin')
+  expect(player.title).toContain('Abdominal (Máquina)')
+  await act(async () => { exercise.open = false; exercise.dispatchEvent(new Event('toggle')) })
+  expect(container.querySelector('iframe')).toBeNull()
 })
 
 it('keeps last-good data and timestamp when a refresh fails', async () => {

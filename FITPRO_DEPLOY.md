@@ -37,6 +37,15 @@ Abrir /fitpro/ no Safari, conectar a Hevy no próprio app e marcar Lembrar chave
 
 Aceite físico no iPhone e consulta pós-treino. Filtros, agenda e nomes são locais por aparelho. Não há gravação de treino nesta versão.
 
+## Nomes e execução — 09/11/2026
+
+- `fitpro/src/pulse/exercisePresentation.js` centraliza nomes pt-BR para movimentos/variantes reconhecidos e associações explícitas de demonstrações. Alertas, treino e gráficos consomem a mesma apresentação de `analyze`. Identidade continua rotina + template; renomear não muda histórico ou vídeo.
+- Nomes desconhecidos e exercícios personalizados são preservados. Não traduzir removendo qualificadores desconhecidos nem buscar vídeos por semelhança textual. Acrescentar novas variantes ao catálogo após conferência.
+- Ficha de treino: botão Ver execução, vídeo sob demanda e detalhes de histórico/identificação recolhidos. Fechar a ficha ou trocar de tela desmonta o player. Fonte e idioma aparecem; aulas gerais ou com variações são identificadas.
+- Os vídeos são incorporados pelo player oficial YouTube (youtube-nocookie.com), sem download/cópia de mídia. Precisam de internet e podem ser indisponibilizados pelo autor; link externo sempre disponível. Sem vídeo confirmado, a ficha informa isso.
+- CSP libera somente esse host para `frame-src` em `/fitpro/`. O iframe envia apenas a origem como referer para evitar erro 153; não inclui chave Hevy, histórico ou nomes personalizados na URL. Nenhuma API ou armazenamento novo.
+- Fontes por demonstração estão no catálogo: biblioteca pública de Leandro Twin, PureGym e vídeos dos autores. Aviso de mídia openGym consultado em 09/11/2026: https://raw.githubusercontent.com/DuarteSantos8/openGym/main/catalogue/media/NOTICE.md. As animações Gym visual não foram copiadas.
+
 ## Publicação confirmada — 04/11/2026
 
 - Commit de implementação 5f16dfc enviado a origin/main (LuizFStival/FitPro).
