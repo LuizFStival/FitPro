@@ -71,3 +71,5 @@ Aceite físico no iPhone e consulta pós-treino. Filtros, agenda e nomes são lo
 - Execução aparece depois da evolução; removidos os links externos do autor e de abertura no YouTube. Vídeo carrega sob demanda no player incorporado e requer internet. GIF offline não implementado: ainda não temos animações com licença de redistribuição; as mídias restritas do openGym não foram copiadas.
 - Estatísticas: seleção A/B/C, nome completo do exercício, valor/data da última sessão e gráfico de carga/repetições. Bloco de esforço removido da interface. Estagnação por treino mostra contagem por rotina com acesso direto à ficha.
 - Validação: 46 testes FitPro + 3 de isolamento passaram. Revisão visual com dados fictícios em 390 × 844 e 1366 × 900, sem overflow horizontal. Não substitui teste em iPhone físico.
+- Publicado: commit `e0e404f` em `origin/main`; prévia `A8sGfEXZ1g1Nzxs3GcprLrSTae2r` e produção `CcAWg1dStvEpf6HrdtXNMroRi6AG` READY. Domínio: https://project-01anu.vercel.app/fitpro/.
+- Verificação pública: raiz, FitPro, manifesto e worker 200; API sem chave 401. Bundle `index-CfhUWYos.js` contém a nova progressão e não contém o painel de esforço.
