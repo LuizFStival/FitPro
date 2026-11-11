@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { analyze, explanation, statusText } from './analysis.js'
+import { analyze, statusText } from './analysis.js'
 import useHevy from './useHevy.js'
 import './pulse.css'
 import './opengym.css'
 import { OpenGymHome, OpenGymPlan, OpenGymStats } from './OpenGymViews.jsx'
 import ExecutionVideo from './ExecutionVideo.jsx'
+import ProgressStatus from './ProgressStatus.jsx'
 
 const number = value => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(value)
 const date = value => value ? new Date(value).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : 'Sem sessão'
@@ -21,15 +22,14 @@ function Glyph({ name }) {
 
 function Exercise({ item, rename }) {
   const [open, setOpen] = useState(false)
-  return <details className="exercise" onToggle={event => { if (event.target === event.currentTarget) setOpen(event.currentTarget.open) }}>
+  return <details className={`exercise exercise-${item.status}`} onToggle={event => { if (event.target === event.currentTarget) setOpen(event.currentTarget.open) }}>
     <summary><span className="order">{item.order + 1}</span><div className="exercise-main"><strong>{item.title}</strong><span className={`status ${item.status}`}>{statusText(item)}{item.streak > 0 && !['stale', 'return'].includes(item.status) ? ` · ${item.streak} sem progresso` : ''}</span>{item.guide && <small className="execution-hint">▶ Demonstração disponível</small>}</div><span className="chevron">⌄</span></summary>
     <div className="exercise-body">
-      {open && <ExecutionVideo key={item.guide?.video || item.id} guide={item.guide} title={item.title} />}
-      <p>{explanation(item)}</p>
-      {item.latest && <><div className="metric-row"><div><small>Última carga</small><b>{number(item.latest.weight)} <small>kg</small></b></div><div><small>Reps totais</small><b>{item.latest.reps}</b></div><div><small>Próxima sessão</small><b>#{item.nextSession}</b></div></div>
-        <p className="muted">{date(item.latest.at)} · {item.latest.sets} séries normais · {number(item.latest.volume)} kg de volume</p>
+      <ProgressStatus item={item} />
+      {item.latest && <><p className="progress-session">Próxima sessão <strong>#{item.nextSession}</strong> deste exercício neste treino</p>
         <div className="timeline" aria-label="Evolução nas últimas oito sessões">{item.sessions.slice(-8).map(s => <span key={s.id} className={s.trend} title={`${date(s.at)}: ${trendNames[s.trend]}`}><b>{symbols[s.trend]}</b><small>{date(s.at)}</small></span>)}</div>
         <details className="exercise-extra"><summary>Ver últimas sessões</summary><div className="table-wrap"><table><caption>Últimas sessões deste exercício neste treino</caption><thead><tr><th>Data</th><th>Kg</th><th>Reps</th><th>Evolução</th></tr></thead><tbody>{item.sessions.slice(-6).reverse().map(s => <tr key={s.id}><td>{date(s.at)}</td><td>{number(s.weight)}</td><td>{s.reps}</td><td>{trendNames[s.trend]}</td></tr>)}</tbody></table></div></details></>}
+      {open && <ExecutionVideo key={item.guide?.video || item.id} guide={item.guide} title={item.title} />}
       <details className="exercise-extra"><summary>Nome e identificação do exercício</summary>
       <p className="muted">Nome na API: {item.apiTitle || 'não informado'}<br />ID Hevy: {item.id}</p>
       <form onSubmit={event => { event.preventDefault(); const form = event.currentTarget; rename(item.id, new FormData(form).get('name').trim()); }}>
@@ -78,7 +78,7 @@ export default function Pulse({ previewSnapshot = null }) {
     <main>
       {!api.snapshot && tab !== 'settings' ? <Connection api={api} /> : tab === 'home' ? <OpenGymHome {...{ api, data, now, openRoutine, go }} />
         : tab === 'plan' ? <OpenGymPlan {...{ api, data, openRoutine }} />
-        : tab === 'stats' ? <OpenGymStats {...{ api, data, now, go }} /> : tab === 'workout' ? <>
+        : tab === 'stats' ? <OpenGymStats {...{ api, data, now, go, openRoutine }} /> : tab === 'workout' ? <>
         <label className="select-label">Qual treino você vai fazer?<select value={routine?.id || ''} onChange={e => setRoutineId(e.target.value)}>{data.active.map(r => <option key={r.id} value={r.id}>{r.title}</option>)}</select></label>
         {routine ? <><div className="workout-heading"><div><h2>{shortTitle(routine.title)}</h2><p>Próxima sessão #{routine.nextSession} · último treino {date(routine.lastAt)}</p></div><span className="pill">{routine.alerts} em atenção</span></div><p className="muted">Na ordem da Hevy. Toque para ver a execução e sua evolução.</p>{routine.exercises.map((e, i) => <Exercise key={`${e.key}-${i}`} item={e} rename={rename} />)}<p className="footnote">Registre as séries na Hevy. Depois de finalizar, volte aqui para atualizar sua evolução.</p></> : <p className="empty">Nenhuma rotina ativa. Escolha as atuais em Configurações.</p>}
       </> : tab === 'alerts' ? <>

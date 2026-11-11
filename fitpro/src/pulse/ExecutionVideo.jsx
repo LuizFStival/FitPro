@@ -9,8 +9,7 @@ export default function ExecutionVideo({ guide, title }) {
       title={`Demonstração: ${title}`} allow="fullscreen; encrypted-media; picture-in-picture" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" />
       <button className="text" onClick={() => setPlaying(false)}>Fechar vídeo</button></>
       : <button className="execution-play" onClick={() => setPlaying(true)} aria-label={`Ver execução de ${title}`}><span aria-hidden="true">▶</span><div><strong>Ver execução</strong><small>{guide.label}</small></div></button>}
-    <p className="execution-credit"><a href={guide.source} target="_blank" rel="noreferrer">{guide.author} ↗</a><span> · </span><a href={`https://www.youtube.com/watch?v=${guide.video}`} target="_blank" rel="noreferrer">Abrir no YouTube ↗</a></p>
     {guide.note && <p className="muted">{guide.note}</p>}
-    {playing && <p className="muted">Se o player não carregar, use “Abrir no YouTube”. Requer internet.</p>}
+    <p className="muted">Vídeo no aplicativo · requer internet.</p>
   </section>
 }

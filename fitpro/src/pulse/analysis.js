@@ -30,7 +30,7 @@ export function progressReasons(current, previous) {
 }
 
 export function analyze(snapshot, preferences = {}, now = Date.now()) {
-  const routines = snapshot?.routines || []
+  const routines = [...(snapshot?.routines || [])].sort((a, b) => (a.title || '').localeCompare(b.title || '', 'pt-BR', { numeric: true, sensitivity: 'base' }))
   const templates = new Map((snapshot?.templates || []).map(template => [template.id, template]))
   const pauseDays = Math.min(30, Math.max(10, Number(preferences.pauseDays) || 14))
   const workouts = [...new Map((snapshot?.workouts || []).filter(w => w.id && w.start_time && Number.isFinite(Date.parse(w.start_time)) && Date.parse(w.start_time) <= now).map(w => [w.id, w])).values()]

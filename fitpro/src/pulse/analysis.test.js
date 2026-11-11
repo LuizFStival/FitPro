@@ -8,6 +8,14 @@ const run = (workouts, prefs = {}, routines = [routine()]) => analyze({ routines
 const current = workouts => run(workouts).active[0].exercises[0]
 
 describe('per-routine plateau', () => {
+  it('sorts routines A/B/C without mutating the snapshot or changing exercise order', () => {
+    const routines = [routine('b', 'Treino B'), routine('c', 'Treino C'), routine('a', 'Treino A')]
+    routines[2].exercises = [{ ...exercise('second'), index: 1 }, { ...exercise('first'), index: 0 }]
+    const result = run([], {}, routines)
+    expect(result.active.map(r => r.id)).toEqual(['a', 'b', 'c'])
+    expect(result.active[0].exercises.map(e => e.id)).toEqual(['first', 'second'])
+    expect(routines.map(r => r.id)).toEqual(['b', 'c', 'a'])
+  })
   it('recognizes higher weight even with fewer reps', () => {
     expect(current([workout('1', 7), workout('2', 1, 45, 8)]).status).toBe('up')
   })

@@ -49,8 +49,28 @@ it('loads the execution player only on request and removes it when the exercise 
   expect(player.src).toContain('https://www.youtube-nocookie.com/embed/5uTPwcdt4gQ')
   expect(player.getAttribute('referrerpolicy')).toBe('strict-origin-when-cross-origin')
   expect(player.title).toContain('Abdominal (Máquina)')
+  expect(exercise.querySelector('.execution a')).toBeNull()
+  expect(exercise.querySelector('.progress-status').compareDocumentPosition(player) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(exercise.querySelector('.progress-steps').getAttribute('aria-label')).toContain('3 sessões')
+  expect(exercise.querySelector('.progress-advice').textContent).toContain('mesma carga')
   await act(async () => { exercise.open = false; exercise.dispatchEvent(new Event('toggle')) })
   expect(container.querySelector('iframe')).toBeNull()
+})
+
+it('keeps A/B/C consistent across plan, workout and statistics, with per-routine alerts and no effort panel', async () => {
+  const routines = ['b', 'c', 'a'].map(id => ({ id, title: `Treino ${id.toUpperCase()}`, exercises }))
+  localStorage.setItem(STORAGE, JSON.stringify({ version: 1, snapshot: { ...snapshot, routines }, preferences: {} }))
+  await mount(); await click('Plano')
+  expect([...container.querySelectorAll('.og-routine-line strong')].map(e => e.textContent)).toEqual(['Treino A', 'Treino B', 'Treino C'])
+  await click('Treino')
+  expect([...container.querySelectorAll('.select-label option')].map(e => e.textContent)).toEqual(['Treino A', 'Treino B', 'Treino C'])
+  await click('Estatísticas')
+  expect([...container.querySelectorAll('[aria-label="Rotina da evolução"] button')].map(e => e.textContent)).toEqual(['Treino A', 'Treino B', 'Treino C'])
+  expect(container.textContent).not.toContain('Esforço no treino')
+  const rows = container.querySelectorAll('.og-plateau-row')
+  expect(rows[1].textContent).toContain('2 em atenção')
+  await act(async () => rows[1].click())
+  expect(container.querySelector('.select-label select').value).toBe('b')
 })
 
 it('keeps last-good data and timestamp when a refresh fails', async () => {

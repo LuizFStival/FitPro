@@ -41,8 +41,8 @@ Aceite físico no iPhone e consulta pós-treino. Filtros, agenda e nomes são lo
 
 - `fitpro/src/pulse/exercisePresentation.js` centraliza nomes pt-BR para movimentos/variantes reconhecidos e associações explícitas de demonstrações. Alertas, treino e gráficos consomem a mesma apresentação de `analyze`. Identidade continua rotina + template; renomear não muda histórico ou vídeo.
 - Nomes desconhecidos e exercícios personalizados são preservados. Não traduzir removendo qualificadores desconhecidos nem buscar vídeos por semelhança textual. Acrescentar novas variantes ao catálogo após conferência.
-- Ficha de treino: botão Ver execução, vídeo sob demanda e detalhes de histórico/identificação recolhidos. Fechar a ficha ou trocar de tela desmonta o player. Fonte e idioma aparecem; aulas gerais ou com variações são identificadas.
-- Os vídeos são incorporados pelo player oficial YouTube (youtube-nocookie.com), sem download/cópia de mídia. Precisam de internet e podem ser indisponibilizados pelo autor; link externo sempre disponível. Sem vídeo confirmado, a ficha informa isso.
+- Ficha de treino: botão Ver execução, vídeo sob demanda e detalhes de histórico/identificação recolhidos. Fechar a ficha ou trocar de tela desmonta o player. Idioma e observações de variantes aparecem; fontes permanecem no catálogo do código.
+- Os vídeos são incorporados pelo player oficial YouTube (youtube-nocookie.com), sem download/cópia de mídia. Precisam de internet e podem ser indisponibilizados pelo autor. Desde 11/11, a ficha usa somente o player incorporado, sem links externos de autor/YouTube. Sem vídeo confirmado, a ficha informa isso.
 - CSP libera somente esse host para `frame-src` em `/fitpro/`. O iframe envia apenas a origem como referer para evitar erro 153; não inclui chave Hevy, histórico ou nomes personalizados na URL. Nenhuma API ou armazenamento novo.
 - Fontes por demonstração estão no catálogo: biblioteca pública de Leandro Twin, PureGym e vídeos dos autores. Aviso de mídia openGym consultado em 09/11/2026: https://raw.githubusercontent.com/DuarteSantos8/openGym/main/catalogue/media/NOTICE.md. As animações Gym visual não foram copiadas.
 
@@ -61,3 +61,13 @@ Aceite físico no iPhone e consulta pós-treino. Filtros, agenda e nomes são lo
 - Prévia `BRD1jNXZpUmVGXivkjGZdsmdkrs9` e produção `ACywUoV8ZDfAbUEr3QECNi6rbmyM`, ambas READY. Domínio público preservado: https://project-01anu.vercel.app/fitpro/.
 - HTTP público: raiz, FitPro, manifesto e worker 200; API sem chave 401. Bundle publicado `index-DCY7O90P.js` contém os nomes pt-BR e o player.
 - Prévia local com dados fictícios: ficha B traduzida, vídeo de panturrilha carregado, viewport 375 px e conteúdo 375 px (sem overflow). Não representa aceite em um iPhone físico nem revisão profissional de técnica de todos os vídeos.
+
+
+## Treino e evolução visual — 11/11/2026
+
+- Rotinas ordenadas alfabeticamente em `analyze`, compartilhadas por Plano, Treino e Estatísticas. A sequência de exercícios dentro de cada rotina continua sendo a da Hevy. Snapshot original não é alterado.
+- Ficha prioriza status, faixa visual de 0/3/6 sessões sem progresso, comparação anterior/última (carga, reps e séries), recomendação conforme status e próxima sessão. Pausa, histórico antigo e falta de dados ficam neutros, sem faixa de estagnação atual.
+- A regra de progressão permanece por rotina + template. Aumento de carga, repetições na mesma carga ou volume reinicia a contagem; retornos e sessões antigas mantêm as proteções existentes.
+- Execução aparece depois da evolução; removidos os links externos do autor e de abertura no YouTube. Vídeo carrega sob demanda no player incorporado e requer internet. GIF offline não implementado: ainda não temos animações com licença de redistribuição; as mídias restritas do openGym não foram copiadas.
+- Estatísticas: seleção A/B/C, nome completo do exercício, valor/data da última sessão e gráfico de carga/repetições. Bloco de esforço removido da interface. Estagnação por treino mostra contagem por rotina com acesso direto à ficha.
+- Validação: 46 testes FitPro + 3 de isolamento passaram. Revisão visual com dados fictícios em 390 × 844 e 1366 × 900, sem overflow horizontal. Não substitui teste em iPhone físico.
