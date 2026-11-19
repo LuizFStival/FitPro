@@ -21,12 +21,45 @@ afterEach(async () => { await act(async () => root.unmount()); container.remove(
 async function mount() { await act(async () => { root.render(<Pulse />) }) }
 async function click(text) { const button = [...container.querySelectorAll('button')].find(b => b.textContent === text); expect(button).toBeTruthy(); await act(async () => button.click()) }
 
+it('shows last load and total reps while collapsed and moves name editing exclusively to settings', async () => {
+  localStorage.setItem(STORAGE, JSON.stringify({ version: 1, snapshot, preferences: {} }))
+  await mount(); await click('Treino')
+  const exercise = container.querySelector('details.exercise')
+  expect(exercise.open).toBe(false)
+  expect(exercise.querySelector('.exercise-last').textContent).toContain('100 kg')
+  expect(exercise.querySelector('.exercise-last').textContent).toContain('10 reps')
+  expect(container.querySelector('input[name="name"]')).toBeNull()
+  expect(container.textContent).not.toContain('ID Hevy:')
+  expect(exercise.querySelector('.session-sets li').textContent).toContain('100 kg× 10 reps')
+  await click('Config')
+  expect(container.textContent).toContain('ID Hevy: leg')
+  const form = container.querySelector('.exercise-name-form')
+  form.querySelector('input').value = 'Meu leg press'
+  await act(async () => form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
+  expect(container.textContent).toContain('Nome salvo neste aparelho.')
+  expect(JSON.parse(localStorage.getItem(STORAGE)).preferences.names.leg).toBe('Meu leg press')
+  await click('Treino')
+  expect(container.querySelector('details.exercise summary strong').textContent).toBe('Meu leg press')
+  expect(container.querySelector('.exercise-last').textContent).toContain('100 kg')
+})
+
+it('explains mixed progress when maximum load rises but total volume falls', async () => {
+  const workouts = [7, 1].map((ago, i) => ({ id: `mixed-${i}`, routine_id: 'b', start_time: new Date(now - ago * DAY).toISOString(), exercises: [{ ...exercises[0], sets: (i ? [55, 55, 40, 40] : [50, 50, 50, 50]).map(weight_kg => ({ type: 'normal', weight_kg, reps: i ? 8 : 10 })) }] }))
+  localStorage.setItem(STORAGE, JSON.stringify({ version: 1, snapshot: { ...snapshot, workouts }, preferences: {} }))
+  await mount(); await click('Treino')
+  const exercise = container.querySelector('details.exercise')
+  expect(exercise.querySelector('.exercise-last').textContent).toContain('32 reps')
+  expect(exercise.querySelector('.mixed-progress').textContent).toContain('2.000 para 1.520 kg')
+  expect(exercise.querySelectorAll('.session-sets li')).toHaveLength(4)
+  expect(exercise.querySelector('.progress-status-head').textContent).toContain('Evoluiu')
+})
+
 it('automatically consults Hevy with a remembered key and opens exercises in routine order', async () => {
   localStorage.setItem(KEY_STORAGE, 'fake-testing-key'); await mount()
   expect(fetch).toHaveBeenCalledTimes(4)
   expect(container.textContent).toContain('2 em atenção')
   await click('Treino')
-  expect([...container.querySelectorAll('summary strong')].map(e => e.textContent)).toEqual(exercises.map(e => e.title))
+  expect([...container.querySelectorAll('details.exercise > summary strong')].map(e => e.textContent)).toEqual(exercises.map(e => e.title))
   expect(container.textContent).toContain('Próxima sessão #5')
   expect(container.querySelectorAll('details[open]')).toHaveLength(0)
   expect(container.textContent).toContain('3 sessão(ões) seguida(s)')
@@ -109,4 +142,34 @@ it('replaces the inactive connection form with an exit link in demo mode', async
   expect(link?.getAttribute('href')).toBe('./#settings')
   expect(fetch).not.toHaveBeenCalled()
   expect(localStorage.getItem(KEY_STORAGE)).toBeNull()
+})
+
+
+it('closes the other exercise and its player when a new exercise opens', async () => {
+  localStorage.setItem(STORAGE, JSON.stringify({ version: 1, snapshot, preferences: {} }))
+  await mount(); await click('Treino')
+  const [first, second] = container.querySelectorAll('details.exercise')
+  await act(async () => { second.open = true; second.dispatchEvent(new Event('toggle')) })
+  await act(async () => second.querySelector('.execution-play').click())
+  expect(second.querySelector('iframe')).toBeTruthy()
+  await act(async () => { first.open = true; first.dispatchEvent(new Event('toggle')) })
+  expect(first.open).toBe(true)
+  expect(second.open).toBe(false)
+  expect(container.querySelector('iframe')).toBeNull()
+  await act(async () => { const nested = first.querySelector('.exercise-extra'); nested.open = true; nested.dispatchEvent(new Event('toggle', { bubbles: true })) })
+  expect(first.open).toBe(true)
+})
+
+it('shows per-routine past sessions with sets, reps and actual elapsed duration', async () => {
+  const workouts = snapshot.workouts.map(w => ({ ...w, end_time: new Date(Date.parse(w.start_time) + 55 * 60000).toISOString() }))
+  localStorage.setItem(STORAGE, JSON.stringify({ version: 1, snapshot: { ...snapshot, workouts }, preferences: {} }))
+  await mount(); await click('Treino')
+  const history = container.querySelector('.workout-history')
+  expect(history.textContent).toContain('4 sessões')
+  expect(history.querySelector('summary').textContent).toContain('Sessão #4')
+  expect(history.querySelector('summary').textContent).toContain('2 séries · 25 reps')
+  expect(history.querySelector('summary').textContent).toContain('55 min')
+  expect(history.querySelector('.past-exercise').textContent).toContain('100 kg × 10')
+  await click('Estatísticas')
+  expect(container.textContent).toContain('Tempo de treino')
 })

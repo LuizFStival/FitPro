@@ -19,7 +19,8 @@ export function setMetrics(sets) {
   const weight = Math.max(...valid.map(s => Number(s.weight_kg)))
   return { weight, reps: valid.reduce((n, s) => n + Number(s.reps), 0),
     volume: valid.reduce((n, s) => n + Number(s.weight_kg) * Number(s.reps), 0),
-    bestReps: Math.max(...valid.filter(s => Number(s.weight_kg) === weight).map(s => Number(s.reps))), sets: valid.length }
+    bestReps: Math.max(...valid.filter(s => Number(s.weight_kg) === weight).map(s => Number(s.reps))), sets: valid.length,
+    setDetails: valid.map(s => ({ weight: Number(s.weight_kg), reps: Number(s.reps) })) }
 }
 
 export function progressReasons(current, previous) {
@@ -45,7 +46,7 @@ export function analyze(snapshot, preferences = {}, now = Date.now()) {
       const sessions = []
       let streak = 0
       for (const workout of matches) {
-        const metrics = setMetrics((workout.exercises || []).filter(e => e.exercise_template_id === id).flatMap(e => e.sets || []))
+        const metrics = setMetrics(ordered(workout.exercises).filter(e => e.exercise_template_id === id).flatMap(e => ordered(e.sets)))
         if (!metrics) continue
         const previous = sessions.at(-1)
         const at = Date.parse(workout.start_time)

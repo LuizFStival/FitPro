@@ -1,4 +1,5 @@
 import { DAY } from './analysis.js'
+import { durationMinutes } from './workoutMetrics.js'
 
 export const dayKey = value => {
   const d = new Date(value)
@@ -68,10 +69,10 @@ export function deriveInsights(snapshot, now = Date.now(), range = 'week') {
   if (!weeks.has(dayKey(cursor))) cursor = shiftDay(cursor, -7)
   while (weeks.has(dayKey(cursor))) { streak++; cursor = shiftDay(cursor, -7) }
   const effort = { total: 0, rated: 0, average: null, nearFailure: 0, distribution: [0, 0, 0, 0, 0], points: [] }
-  let effortSum = 0, minutes = 0
+  let effortSum = 0, minutes = 0, timedCount = 0
   for (const w of selected) {
-    const duration = Date.parse(w.end_time) - Date.parse(w.start_time)
-    if (Number.isFinite(duration) && duration > 0) minutes += duration / 60000
+    const duration = durationMinutes(w, now)
+    if (duration != null) { minutes += duration; timedCount++ }
     const rates = []
     for (const e of w.exercises || []) for (const s of workingSets(e)) {
       effort.total++
@@ -88,7 +89,7 @@ export function deriveInsights(snapshot, now = Date.now(), range = 'week') {
   const latestWeight = weights.at(-1)
   const recentWeights = weights.filter(p => p.t >= now - 30 * DAY)
   const weightDelta = recentWeights.length >= 2 ? recentWeights.at(-1).y - recentWeights[0].y : null
-  return { workouts, selected, weekWorkouts, weekStart: start, streak, minutes, effort, weights, latestWeight, recentWeights, weightDelta,
+  return { workouts, selected, weekWorkouts, weekStart: start, streak, minutes, timedCount, averageMinutes: timedCount ? minutes / timedCount : null, effort, weights, latestWeight, recentWeights, weightDelta,
     monthCount: workouts.filter(w => dayKey(w.start_time).slice(0, 7) === dayKey(now).slice(0, 7)).length,
     muscles: muscleSummary(selected, snapshot?.templates || []) }
 }

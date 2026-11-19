@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react'
+import MuscleRadar from './MuscleRadar.jsx'
+import { formatDuration } from './workoutMetrics.js'
 import BodyMap from '../components/BodyMap.jsx'
 import LineChart from '../components/LineChart.jsx'
 import { _setLangState } from '../lib/i18n-core.js'
@@ -75,6 +77,7 @@ export function ActivityCard({ workouts, now }) {
 }
 
 function BalanceCard({ api, now }) {
+  const [view, setView] = useState('radar')
   const [range, setRange] = useState('week'), [offset, setOffset] = useState(0), [selected, setSelected] = useState(null)
   const end = offset && range === 'week' ? +shiftDay(weekStart(now), (offset + 1) * 7) - 1 : now
   const info = useMemo(() => deriveInsights(api.snapshot, end, range), [api.snapshot, end, range])
@@ -82,11 +85,12 @@ function BalanceCard({ api, now }) {
   const contributors = info.muscles.contributors[selected] || []
   return <section className="card og-balance"><div className="section-head"><h2>Equilíbrio muscular</h2><span>Séries realizadas</span></div>{tabs([['week', 'Semana'], ['30', '30 dias'], ['90', '90 dias']], range, v => { setRange(v); setSelected(null) }, 'Período do equilíbrio muscular')}
     {range === 'week' && <div className="month-nav"><button aria-label="Semana muscular anterior" onClick={() => setOffset(n => n - 1)}>‹</button><strong>{offset ? `${date(info.weekStart)} a ${date(end)}` : 'Esta semana'}</strong><button aria-label="Próxima semana muscular" disabled={!offset} onClick={() => setOffset(n => n + 1)}>›</button></div>}
-    <BodyMap load={info.muscles.load} onMuscle={m => setSelected(s => s === m ? null : m)} selected={selected} className="tappable" />
+    {tabs([['radar', 'Teia muscular'], ['body', 'Mapa corporal']], view, setView, 'Visualização muscular')}
+    {view === 'radar' ? <MuscleRadar load={info.muscles.load} /> : <><BodyMap load={info.muscles.load} onMuscle={m => setSelected(s => s === m ? null : m)} selected={selected} className="tappable" />
     <div className="og-map-legend"><span>Menos</span>{[0, 1, 2, 3, 4].map(i => <i key={i} className={`l${i}`} />)}<span>Mais séries</span></div>
     <p className="muted">Toque no músculo para ver quais exercícios o trabalharam.</p>
     {selected ? <div className="og-muscle-detail"><h3>{MUSCLE_LABELS[selected]} · {fmt(info.muscles.load[selected] || 0)} séries equivalentes</h3>{contributors.length ? contributors.map(e => <div className="history-row" key={e.id}><div><strong>{e.title}</strong><small>{e.routine}</small></div><span>{fmt(e.sets)}</span></div>) : <p className="muted">Nenhuma série com esse grupo identificado no período.</p>}<button className="text" onClick={() => setSelected(null)}>Ver todos os músculos</button></div> : <div className="og-muscle-bars">{rows.slice(0, 5).map(([m, value]) => <div key={m}><span>{MUSCLE_LABELS[m]}</span><meter min={0} max={rows[0]?.[1] || 1} value={value} /><b>{fmt(value)}</b></div>)}</div>}
-    <p className="footnote">{info.muscles.knownSets}/{info.muscles.totalSets} séries com músculos identificados pela API. Primário = 1; secundário = 0,4, como no openGym. Cor indica distribuição relativa, não hipertrofia ou recuperação.</p>
+    </>}<p className="footnote">{info.muscles.knownSets}/{info.muscles.totalSets} séries com músculos identificados pela API. Primário = 1; secundário = 0,4, como no openGym. Cor indica distribuição relativa, não hipertrofia ou recuperação.</p>
   </section>
 }
 
@@ -105,9 +109,15 @@ function ProgressCard({ data }) {
   </section>
 }
 
+function TrainingTime({ api, now }) {
+  const [range, setRange] = useState('week')
+  const info = useMemo(() => deriveInsights(api.snapshot, now, range), [api.snapshot, now, range])
+  return <section className="card training-time"><h2>Tempo de treino</h2>{tabs([['week', 'Semana'], ['30', '30 dias'], ['90', '90 dias']], range, setRange, 'Período do tempo de treino')}<div className="time-metrics"><div><small>Total</small><strong>{info.timedCount ? formatDuration(info.minutes) : '—'}</strong></div><div><small>Média por sessão</small><strong>{formatDuration(info.averageMinutes)}</strong></div></div><p className="footnote">{info.timedCount} de {info.selected.length} sessões com duração. Tempo entre início e fim registrados na Hevy, incluindo descansos.</p></section>
+}
+
 export function OpenGymStats({ api, data, now, go, openRoutine }) {
   const insights = useMemo(() => deriveInsights(api.snapshot, now), [api.snapshot, now])
   return <><section className="og-stat-grid"><div><small>Treinos</small><strong>{insights.workouts.length}</strong><span>Todo o histórico</span></div><div><small>Neste mês</small><strong>{insights.monthCount}</strong><span>{new Date(now).toLocaleDateString('pt-BR', { month: 'long' })}</span></div><div><small>Sequência semanal</small><strong>{insights.streak}</strong><span>Semanas com treino</span></div><div><small>Peso · 30 dias</small><strong>{insights.weightDelta == null ? '—' : `${insights.weightDelta > 0 ? '+' : ''}${fmt(insights.weightDelta)} kg`}</strong><span>{insights.weightDelta == null ? 'Sem medições suficientes' : 'Entre primeira e última medição'}</span></div></section>
-    <div className="og-stats-grid"><div className="og-column"><ActivityCard workouts={insights.workouts} now={now} /><BalanceCard api={api} now={now} /></div><div className="og-column"><ProgressCard data={data} /><section className="card og-plateaus"><div className="section-head"><h2>Estagnação por treino</h2><span>{data.alerts.length} em atenção</span></div>{data.active.map(r => <button className="og-plateau-row" key={r.id} onClick={() => openRoutine(r.id)}><strong>{title(r)}</strong><span className={r.alerts ? 'amber' : 'muted'}>{r.alerts ? `${r.alerts} em atenção` : 'Sem alertas recentes'}</span><span aria-hidden="true">→</span></button>)}<p className="footnote">Rotinas ativas · sessões nos últimos 30 dias.</p><button className="og-choice" onClick={() => go('alerts')}>Ver todos os alertas →</button></section></div></div>
+    <div className="og-stats-grid"><div className="og-column"><ActivityCard workouts={insights.workouts} now={now} /><BalanceCard api={api} now={now} /></div><div className="og-column"><TrainingTime api={api} now={now} /><ProgressCard data={data} /><section className="card og-plateaus"><div className="section-head"><h2>Estagnação por treino</h2><span>{data.alerts.length} em atenção</span></div>{data.active.map(r => <button className="og-plateau-row" key={r.id} onClick={() => openRoutine(r.id)}><strong>{title(r)}</strong><span className={r.alerts ? 'amber' : 'muted'}>{r.alerts ? `${r.alerts} em atenção` : 'Sem alertas recentes'}</span><span aria-hidden="true">→</span></button>)}<p className="footnote">Rotinas ativas · sessões nos últimos 30 dias.</p><button className="og-choice" onClick={() => go('alerts')}>Ver todos os alertas →</button></section></div></div>
   </>
 }

@@ -11,3 +11,12 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator && (location.protocol =
   navigator.serviceWorker.getRegistration('/').then(reg => reg?.update()).catch(() => {})
   navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, { scope: import.meta.env.BASE_URL }).catch(() => {})
 }
+
+// Keep gym interactions at app scale while retaining one-finger scrolling.
+const preventGestureZoom = event => {
+  if (event.target instanceof Element && event.target.closest('.pulse')) event.preventDefault()
+}
+for (const type of ['gesturestart', 'gesturechange']) document.addEventListener(type, preventGestureZoom, { passive: false })
+document.addEventListener('touchmove', event => {
+  if (event.touches.length > 1) preventGestureZoom(event)
+}, { passive: false })

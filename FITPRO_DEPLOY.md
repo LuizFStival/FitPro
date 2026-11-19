@@ -73,3 +73,14 @@ Aceite físico no iPhone e consulta pós-treino. Filtros, agenda e nomes são lo
 - Validação: 46 testes FitPro + 3 de isolamento passaram. Revisão visual com dados fictícios em 390 × 844 e 1366 × 900, sem overflow horizontal. Não substitui teste em iPhone físico.
 - Publicado: commit `e0e404f` em `origin/main`; prévia `A8sGfEXZ1g1Nzxs3GcprLrSTae2r` e produção `CcAWg1dStvEpf6HrdtXNMroRi6AG` READY. Domínio: https://project-01anu.vercel.app/fitpro/.
 - Verificação pública: raiz, FitPro, manifesto e worker 200; API sem chave 401. Bundle `index-CfhUWYos.js` contém a nova progressão e não contém o painel de esforço.
+
+## Treino, histórico e distribuição muscular — 18/11/2026
+
+- Última carga máxima e repetições totais visíveis na ficha recolhida. Ficha aberta mostra carga/reps de cada série normal e avisa quando carga máxima cresce mas volume total diminui. Regra continua por sessão e rotina, sem comparação posicional de séries; aquecimentos/drop sets excluídos.
+- Nomes e IDs movidos exclusivamente para Config > Nomes dos exercícios. Preferência local por template, compartilhada entre rotinas, sem alterar identidade/histórico.
+- Apenas um exercício aberto por vez, com fechamento do player anterior. Detalhes internos não fecham o exercício.
+- Zoom mobile limitado via viewport, touch-action e prevenção de gestos multitoque dentro do app; rolagem com um dedo preservada e campos com fonte de 16 px. Preferências de acessibilidade do navegador/SO podem prevalecer. Aceite em iPhone físico pendente.
+- Duração real da Hevy (fim menos início, incluindo descanso), última duração no treino e total/média por semana/30/90 dias nas estatísticas. Sem data final válida, não há duração estimada; média usa só sessões com duração válida.
+- Histórico da rotina: total de sessões, número/data de cada sessão, duração, séries e reps totais, detalhamento dos exercícios e cargas/reps por série; paginação de 5 em 5. Histórico vinculado por ID ou título único, nunca só pela letra A/B/C.
+- Radar muscular com oito grupos fixos, soma da mesma carga muscular do mapa (primário 1, secundário 0,4), filtros de período, agrupamentos e escala explicitados. Sem metas inventadas de equilíbrio/hipertrofia. Mapa corporal preservado como alternativa.
+- Validação: 53 testes FitPro + 3 isolamento, build e conferência visual em 390 × 844 e 1366 × 900. Expansão exclusiva, histórico e configurações conferidos com dados fictícios; sem overflow horizontal.

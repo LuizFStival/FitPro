@@ -8,6 +8,24 @@ const run = (workouts, prefs = {}, routines = [routine()]) => analyze({ routines
 const current = workouts => run(workouts).active[0].exercises[0]
 
 describe('per-routine plateau', () => {
+  it('accounts for heavier early sets and lighter final sets without multiplying max weight by all reps', () => {
+    const before = workout('before', 7)
+    before.exercises[0].sets = Array.from({ length: 4 }, (_, index) => ({ index, type: 'normal', weight_kg: 50, reps: 10 }))
+    const after = workout('after', 1)
+    after.exercises[0].sets = [
+      { index: 3, type: 'normal', weight_kg: 40, reps: 8 },
+      { index: 1, type: 'normal', weight_kg: 55, reps: 8 },
+      { index: 0, type: 'warmup', weight_kg: 20, reps: 15 },
+      { index: 2, type: 'normal', weight_kg: 55, reps: 8 },
+      { index: 4, type: 'normal', weight_kg: 40, reps: 8 },
+      { index: 5, type: 'dropset', weight_kg: 20, reps: 12 },
+    ]
+    const item = current([before, after])
+    expect(item.latest).toMatchObject({ weight: 55, reps: 32, volume: 1520, sets: 4, reasons: ['carga'] })
+    expect(item.latest.setDetails.map(s => s.weight)).toEqual([55, 55, 40, 40])
+    expect(item.status).toBe('up')
+    expect(item.streak).toBe(0)
+  })
   it('sorts routines A/B/C without mutating the snapshot or changing exercise order', () => {
     const routines = [routine('b', 'Treino B'), routine('c', 'Treino C'), routine('a', 'Treino A')]
     routines[2].exercises = [{ ...exercise('second'), index: 1 }, { ...exercise('first'), index: 0 }]
