@@ -3,6 +3,8 @@ import { analyze, statusText, routineFor } from './analysis.js'
 import useHevy from './useHevy.js'
 import './pulse.css'
 import './opengym.css'
+import './training.css'
+import RoutinePicker from './RoutinePicker.jsx'
 import { OpenGymHome, OpenGymPlan, OpenGymStats } from './OpenGymViews.jsx'
 import ExecutionVideo from './ExecutionVideo.jsx'
 import ProgressStatus from './ProgressStatus.jsx'
@@ -26,15 +28,15 @@ function Glyph({ name }) {
 function Exercise({ item, expanded, setExpanded }) {
   const open = expanded === item.key
   return <details className={`exercise exercise-${item.status}`} open={open} onToggle={event => { if (event.target === event.currentTarget) { const isOpen = event.currentTarget.open; setExpanded(current => isOpen ? item.key : current === item.key ? null : current) } }}>
-    <summary><span className="order">{item.order + 1}</span><div className="exercise-main"><strong>{item.title}</strong><span className={`status ${item.status}`}>{statusText(item)}{item.streak > 0 && !['stale', 'return'].includes(item.status) ? ` · ${item.streak} sem progresso` : ''}</span>
-      {item.latest ? <span className="exercise-last"><span>Última · {date(item.latest.at)}</span><span><b>{number(item.latest.weight)} kg</b> máx. · <b>{item.latest.reps} reps</b> totais</span></span> : <small>Sem carga e repetições registradas</small>}
+    <summary><span className="order">{item.order + 1}</span><div className="exercise-main"><strong>{item.title}</strong><span className={`status ${item.status}`}>{statusText(item)}{!open && item.streak > 0 && !['stale', 'return'].includes(item.status) ? ` · ${item.streak} sem progresso` : ''}</span>
+      {!open && (item.latest ? <span className="exercise-last"><span>Última · {date(item.latest.at)}</span><span><b>{number(item.latest.weight)} kg</b> máx. · <b>{item.latest.reps} reps</b> totais</span></span> : <small>Sem carga e repetições registradas</small>)}
       </div><span className="chevron">⌄</span></summary>
     <div className="exercise-body">
       <ProgressStatus item={item} />
-      {item.latest && <><p className="progress-session">Próxima sessão <strong>#{item.nextSession}</strong> deste exercício neste treino</p>
+      {open && <ExecutionVideo compact key={item.guide?.video || item.id} guide={item.guide} title={item.title} />}
+      {item.latest && <details className="exercise-extra"><summary>Histórico e detalhes · {item.sessions.length} sessões</summary>
         <div className="timeline" aria-label="Evolução nas últimas oito sessões">{item.sessions.slice(-8).map(s => <span key={s.id} className={s.trend} title={`${date(s.at)}: ${trendNames[s.trend]}`}><b>{symbols[s.trend]}</b><small>{date(s.at)}</small></span>)}</div>
-        <details className="exercise-extra"><summary>Ver últimas sessões · {item.sessions.length} no histórico</summary><div className="table-wrap"><table><caption>Últimas sessões deste exercício neste treino</caption><thead><tr><th>Data</th><th>Kg máx.</th><th>Séries</th><th>Reps totais</th><th>Evolução</th></tr></thead><tbody>{item.sessions.slice(-6).reverse().map(s => <tr key={s.id}><td>{date(s.at)}</td><td>{number(s.weight)}</td><td>{s.sets}</td><td>{s.reps}</td><td>{trendNames[s.trend]}</td></tr>)}</tbody></table></div></details></>}
-      {open && <ExecutionVideo key={item.guide?.video || item.id} guide={item.guide} title={item.title} />}
+        <p className="progress-rule">Somente este exercício neste treino. Comparamos carga máxima, repetições e volume das séries normais; aquecimentos e drop sets ficam fora. Atenção em 3 sessões sem progresso; persistente em 6. Retornos de pausa criam uma nova referência.</p><div className="table-wrap"><table><caption>Últimas sessões deste exercício neste treino</caption><thead><tr><th>Data</th><th>Kg máx.</th><th>Séries</th><th>Reps totais</th><th>Evolução</th></tr></thead><tbody>{item.sessions.slice(-6).reverse().map(s => <tr key={s.id}><td>{date(s.at)}</td><td>{number(s.weight)}</td><td>{s.sets}</td><td>{s.reps}</td><td>{trendNames[s.trend]}</td></tr>)}</tbody></table></div></details>}
     </div>
   </details>
 }
@@ -80,8 +82,8 @@ export default function Pulse({ previewSnapshot = null }) {
       {!api.snapshot && tab !== 'settings' ? <Connection api={api} /> : tab === 'home' ? <OpenGymHome {...{ api, data, now, openRoutine, go }} />
         : tab === 'plan' ? <OpenGymPlan {...{ api, data, openRoutine }} />
         : tab === 'stats' ? <OpenGymStats {...{ api, data, now, go, openRoutine }} /> : tab === 'workout' ? <>
-        <label className="select-label">Qual treino você vai fazer?<select value={routine?.id || ''} onChange={e => { setExpanded(null); setRoutineId(e.target.value) }}>{data.active.map(r => <option key={r.id} value={r.id}>{r.title}</option>)}</select></label>
-        {routine ? <><div className="workout-heading"><div><h2>{shortTitle(routine.title)}</h2><p>Próxima sessão #{routine.nextSession} · último treino {date(routine.lastAt)}</p><p>Última duração: {formatDuration(durationMinutes(routineWorkouts[0], now))}</p></div><span className="pill">{routine.alerts} em atenção</span></div><p className="muted">Na ordem da Hevy. Toque para ver a execução e sua evolução.</p>{routine.exercises.map((e, i) => <Exercise key={`${e.key}-${i}`} item={e} expanded={expanded} setExpanded={setExpanded} />)}<WorkoutHistory key={routine.id} routine={routine} workouts={routineWorkouts} now={now} names={api.preferences.names} /><p className="footnote">Registre as séries na Hevy. Depois de finalizar, volte aqui para atualizar sua evolução.</p></> : <p className="empty">Nenhuma rotina ativa. Escolha as atuais em Configurações.</p>}
+        <RoutinePicker routines={data.active} selected={routine?.id} snapshot={api.snapshot} onSelect={id => { setExpanded(null); setRoutineId(id) }} />
+        {routine ? <><div className="workout-heading"><div><h2>{shortTitle(routine.title)}</h2><p>Próxima sessão #{routine.nextSession} · {routine.exercises.length} exercícios</p></div><span className="pill">{routine.alerts} em atenção</span></div><p className="workout-hint">Na ordem da Hevy · toque no exercício que está fazendo.</p>{routine.exercises.map((e, i) => <Exercise key={`${e.key}-${i}`} item={e} expanded={expanded} setExpanded={setExpanded} />)}<details key={routine.id} className="routine-history"><summary>Treinos passados <span>{routineWorkouts.length} sessões · última duração {formatDuration(durationMinutes(routineWorkouts[0], now))}</span></summary><WorkoutHistory routine={routine} workouts={routineWorkouts} now={now} names={api.preferences.names} /></details><p className="footnote">Registre as séries na Hevy. Depois de finalizar, volte aqui para atualizar sua evolução.</p></> : <p className="empty">Nenhuma rotina ativa. Escolha as atuais em Configurações.</p>}
       </> : tab === 'alerts' ? <>
         <div className="card"><h2>Estagnação por treino</h2><p>3 a 5 sessões sem progresso: atenção. 6 ou mais: estagnação persistente. Aumento de carga, repetições na mesma carga ou volume reinicia a contagem.</p><p className="muted">Somente exercícios das rotinas ativas com sessão nos últimos 30 dias. Retornos após pausa ficam neutros.</p></div>
         {data.alerts.length ? data.alerts.map(e => <section key={e.key}><h3>{e.routineTitle}</h3><Exercise item={e} expanded={expanded} setExpanded={setExpanded} /></section>) : <div className="empty"><span className="green">✓</span><h2>Sem alertas recentes</h2><p>Consulte cada treino para ver o histórico e exercícios sem dados suficientes.</p></div>}

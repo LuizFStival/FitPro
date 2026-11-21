@@ -86,3 +86,14 @@ Aceite físico no iPhone e consulta pós-treino. Filtros, agenda e nomes são lo
 - Validação: 53 testes FitPro + 3 isolamento, build e conferência visual em 390 × 844 e 1366 × 900. Expansão exclusiva, histórico e configurações conferidos com dados fictícios; sem overflow horizontal.
 - Publicação confirmada após envio do commit `51aaa2e` a `origin/main`: domínio público serviu o bundle `index-Dkp34kXQ.js`, igual ao build local, contendo radar, duração, histórico, nomes nas configurações e séries da última sessão. Viewport com limite de zoom confirmado no HTML.
 - Raiz, FitPro, manifesto e worker responderam 200; API FitPro sem chave respondeu 401. O CLI pediu renovação de login, mas a versão nova já estava pública após o push; a tentativa de login/deploy manual foi cancelada. Nenhuma chave ou credencial foi necessária para a conferência.
+
+## Ficha prática para a academia — 21/11/2026
+
+- Treino usa cartões A/B/C com seleção explícita, mapa corporal e até três grupos musculares identificados na rotina da Hevy. Sem metadados, exibe quantidade de exercícios; não inventa grupos. A ordem dos exercícios e os IDs continuam preservados.
+- Ficha aberta prioriza última execução, mudança em carga/reps/volume e um foco curto para a próxima sessão. Séries uniformes são agrupadas (ex.: 4 × 12 · 45 kg); séries diferentes preservam cada carga e repetição.
+- Eliminados a duplicação da última carga, o status repetido, a escala sempre visível e o aviso “0 sem progresso”. Alertas reais mantêm status, cor e número de sessões sem progresso.
+- Linha do tempo, tabela e explicação da regra ficam em “Histórico e detalhes”, fechado inicialmente. Treinos passados, duração e detalhamento por série seguem disponíveis em uma seção recolhida.
+- Vídeo continua incorporado e só carrega ao tocar em “Ver execução”. Apenas um exercício fica aberto; trocar de rotina fecha o anterior. Nomes/IDs continuam nas configurações.
+- Nenhuma mudança na regra de estagnação ou nos dados: comparação permanece por exercício + rotina; pausa, dados antigos e falta de histórico não recebem comparação artificial.
+- Validação automatizada: 54 testes FitPro e 3 testes de isolamento; build de produção. Conferência com dados fictícios no navegador (não equivale a teste físico em iPhone).
+- Revisão visual: 390 × 844 e 1366 × 900, sem overflow horizontal. Ficha aberta com cerca de 409–420 px no celular; histórico permanece recolhido. Graphify atualizado: 538 nós e 1.098 relações.
