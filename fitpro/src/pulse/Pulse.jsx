@@ -28,7 +28,7 @@ function Glyph({ name }) {
 function Exercise({ item, expanded, setExpanded }) {
   const open = expanded === item.key
   return <details className={`exercise exercise-${item.status}`} open={open} onToggle={event => { if (event.target === event.currentTarget) { const isOpen = event.currentTarget.open; setExpanded(current => isOpen ? item.key : current === item.key ? null : current) } }}>
-    <summary><span className="order">{item.order + 1}</span><div className="exercise-main"><strong>{item.title}</strong><span className={`status ${item.status}`}>{statusText(item)}{!open && item.streak > 0 && !['stale', 'return'].includes(item.status) ? ` · ${item.streak} sem progresso` : ''}</span>
+    <summary><span className="order">{item.order + 1}</span><div className="exercise-main"><strong>{item.title}</strong><span className={`status ${item.status}`}>{statusText(item)}{item.streak > 0 && !['stale', 'return'].includes(item.status) ? <span className="summary-streak"> · {item.streak} sem progresso</span> : null}</span>
       {!open && (item.latest ? <span className="exercise-last"><span>Última · {date(item.latest.at)}</span><span><b>{number(item.latest.weight)} kg</b> máx. · <b>{item.latest.reps} reps</b> totais</span></span> : <small>Sem carga e repetições registradas</small>)}
       </div><span className="chevron">⌄</span></summary>
     <div className="exercise-body">

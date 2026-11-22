@@ -1,4 +1,4 @@
-import { explanation } from './analysis.js'
+import { explanation, statusText } from './analysis.js'
 
 const format = value => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(value)
 const date = value => new Date(value).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
@@ -23,7 +23,11 @@ export default function ProgressStatus({ item }) {
     {comparable && previous && <p className="progress-change"><span>vs. {date(previous.at)}</span><strong>{latest.weight === previous.weight ? 'Mesma carga' : `${delta(latest.weight - previous.weight)} kg máx.`} · {latest.reps === previous.reps ? 'mesmas reps' : `${delta(latest.reps - previous.reps)} reps`}</strong>
       {latest.volume !== previous.volume && <small className={latest.volume < previous.volume ? 'mixed-progress' : ''}>Volume {delta(latest.volume - previous.volume)} kg{latest.volume < previous.volume ? ` (${format(previous.volume)} para ${format(latest.volume)} kg)` : ''}</small>}
     </p>}
-    {comparable && item.streak > 0 && <p className="compact-streak">{item.streak} sessões sem progresso · {item.streak >= 6 ? 'revise com seu instrutor' : item.streak >= 3 ? 'merece atenção' : 'atenção a partir de 3'}</p>}
+    {comparable && <div className="stagnation-meter" role="img" aria-label={`${item.streak} sessões seguidas sem progresso. Atenção em 3, persistente em 6.`}>
+      <div className="stagnation-meter-head"><strong>{statusText(item)}</strong><span><b>{item.streak}</b> sem progresso</span></div>
+      <div className="stagnation-meter-bars" aria-hidden="true">{Array.from({ length: 6 }, (_, index) => <i key={index} className={index < item.streak ? 'filled' : ''} />)}</div>
+      <div className="stagnation-meter-scale" aria-hidden="true"><span>0 · evoluiu</span><span>3 · atenção</span><span>6 · persistente</span></div>
+    </div>}
     <div className="progress-advice"><small>FOCO PARA HOJE</small><p>{recommendation}</p></div>
   </section>
 }

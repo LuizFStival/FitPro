@@ -97,3 +97,4 @@ Aceite físico no iPhone e consulta pós-treino. Filtros, agenda e nomes são lo
 - Nenhuma mudança na regra de estagnação ou nos dados: comparação permanece por exercício + rotina; pausa, dados antigos e falta de histórico não recebem comparação artificial.
 - Validação automatizada: 54 testes FitPro e 3 testes de isolamento; build de produção. Conferência com dados fictícios no navegador (não equivale a teste físico em iPhone).
 - Revisão visual: 390 × 844 e 1366 × 900, sem overflow horizontal. Ficha aberta com cerca de 409–420 px no celular; histórico permanece recolhido. Graphify atualizado: 538 nós e 1.098 relações.
+- Ajuste de usabilidade: régua 0/3/6 restaurada diretamente na ficha aberta. Exibe a contagem atual de sessões sem progresso e os limites “evoluiu”, “atenção” e “persistente”; a linha do tempo com datas continua recolhida em “Histórico e detalhes”.
