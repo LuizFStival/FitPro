@@ -1,5 +1,6 @@
 // Read-only Hevy analysis. Identity is routine + template, never a translated name.
 import { portugueseExerciseName, executionGuide } from './exercisePresentation.js'
+import { dedupeWorkouts } from './workoutDedup.js'
 export const DAY = 86400000
 export const normalizeTitle = value => String(value || '').trim().toLocaleLowerCase('pt-BR').replace(/\s+/g, ' ')
 const finite = value => value !== null && value !== '' && Number.isFinite(Number(value)) && Number(value) >= 0
@@ -57,8 +58,7 @@ export function analyze(snapshot, preferences = {}, now = Date.now()) {
   const routines = [...(snapshot?.routines || [])].sort((a, b) => (a.title || '').localeCompare(b.title || '', 'pt-BR', { numeric: true, sensitivity: 'base' }))
   const templates = new Map((snapshot?.templates || []).map(template => [template.id, template]))
   const pauseDays = Math.min(30, Math.max(10, Number(preferences.pauseDays) || 14))
-  const workouts = [...new Map((snapshot?.workouts || []).filter(w => w.id && w.start_time && Number.isFinite(Date.parse(w.start_time)) && Date.parse(w.start_time) <= now).map(w => [w.id, w])).values()]
-    .sort((a, b) => Date.parse(a.start_time) - Date.parse(b.start_time))
+  const workouts = dedupeWorkouts(snapshot?.workouts, now)
   const mapped = workouts.map(workout => ({ workout, routine: routineFor(workout, routines) }))
   const result = routines.map(routine => {
     const matches = mapped.filter(m => m.routine?.id === routine.id).map(m => m.workout)

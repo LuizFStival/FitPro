@@ -17,10 +17,12 @@ it('uses elapsed time including rest, rejects missing, reversed and future end t
 })
 
 it('keeps radar axes fixed and sums the same muscular load, without inventing data', () => {
-  const rows = radarValues({ chest: 4, biceps: 3, triceps: 2, forearm: .4, hamstring: 5, gluteal: 2 })
-  expect(rows).toHaveLength(8)
-  expect(rows.find(r => r.label === 'Braços').value).toBe(5.4)
-  expect(rows.find(r => r.label === 'Posterior').value).toBe(7)
+  const rows = radarValues({ chest: 4, biceps: 3, triceps: 2, forearms: .4, hamstrings: 5, glutes: 2 })
+  expect(rows).toHaveLength(13)
+  expect(rows.find(r => r.label === 'Bíceps').value).toBe(3)
+  expect(rows.find(r => r.label === 'Tríceps').value).toBe(2)
+  expect(rows.find(r => r.label === 'Posterior de coxa').value).toBe(5)
+  expect(rows.find(r => r.label === 'Glúteos').value).toBe(2)
   expect(rows.find(r => r.label === 'Costas').value).toBe(0)
   expect(radarValues({}).every(r => r.value === 0)).toBe(true)
 })

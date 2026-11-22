@@ -26,7 +26,7 @@ function useBodyPaths() {
   return paths
 }
 
-function View({ view, levels, onMuscle, selected }) {
+function View({ view, side, levels, onMuscle, selected }) {
   const activate = (event, slug) => {
     if (event.key !== 'Enter' && event.key !== ' ') return
     if (event.key === ' ') event.preventDefault()
@@ -36,20 +36,24 @@ function View({ view, levels, onMuscle, selected }) {
     <svg className="bm-v" viewBox={view.vb} role={onMuscle ? 'group' : 'img'}>
       {INERT.map(slug => (view.p[slug] || []).map((d, i) =>
         <path key={slug + i} className="bm-sil" d={d} />))}
-      {MUSCLES.map(slug => (view.p[slug] || []).map((d, i) =>
+      {MUSCLES.flatMap(slug => {
+        const hasRearShoulderData = Object.prototype.hasOwnProperty.call(levels, 'rear-deltoids')
+        const muscle = side === 'back' && slug === 'deltoids' && hasRearShoulderData ? 'rear-deltoids' : slug
+        return (view.p[slug] || []).map((d, i) =>
         <path
           key={slug + i}
-          className={'bm-m l' + (levels[slug] || 0) + (selected === slug ? ' sel' : '')}
+          className={'bm-m l' + (levels[muscle] || 0) + (selected === muscle ? ' sel' : '')}
           d={d}
-          onClick={onMuscle ? () => onMuscle(slug) : undefined}
-          onKeyDown={onMuscle ? event => activate(event, slug) : undefined}
+          onClick={onMuscle ? () => onMuscle(muscle) : undefined}
+          onKeyDown={onMuscle ? event => activate(event, muscle) : undefined}
           role={onMuscle ? 'button' : undefined}
           tabIndex={onMuscle ? 0 : undefined}
-          aria-label={onMuscle ? t(MUSCLE_NAME[slug]) : undefined}
-          aria-pressed={onMuscle ? selected === slug : undefined}
+          aria-label={onMuscle ? t(MUSCLE_NAME[muscle]) : undefined}
+          aria-pressed={onMuscle ? selected === muscle : undefined}
         >
-          <title>{t(MUSCLE_NAME[slug])}</title>
-        </path>))}
+          <title>{t(MUSCLE_NAME[muscle])}</title>
+        </path>)
+      })}
     </svg>
   )
 }
@@ -69,8 +73,8 @@ export default function BodyMap({ load = {}, thresholds, levels: given, body = '
   return (
     <div className={'bodymap ' + className}>
       {g ? <>
-        <View view={g.front} levels={levels} onMuscle={onMuscle} selected={selected} />
-        <View view={g.back} levels={levels} onMuscle={onMuscle} selected={selected} />
+        <View view={g.front} side="front" levels={levels} onMuscle={onMuscle} selected={selected} />
+        <View view={g.back} side="back" levels={levels} onMuscle={onMuscle} selected={selected} />
       </> : <div className="bm-ph" aria-hidden="true" />}
     </div>
   )

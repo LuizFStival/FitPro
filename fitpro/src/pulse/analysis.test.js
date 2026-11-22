@@ -103,6 +103,14 @@ describe('per-routine plateau', () => {
     const item = current([w, w])
     expect(item.sessions).toHaveLength(1); expect(item.latest.reps).toBe(20)
   })
+  it('does not inflate stagnation with Hevy duplicates started less than five minutes apart', () => {
+    const original = workout('original', 1)
+    const duplicate = { ...original, id: 'duplicate', start_time: new Date(Date.parse(original.start_time) + 4 * 60000).toISOString() }
+    const result = run([original, duplicate])
+    expect(result.workouts).toHaveLength(1)
+    expect(result.active[0].exercises[0].sessions).toHaveLength(1)
+    expect(result.active[0].exercises[0].streak).toBe(0)
+  })
   it('matches titles only when unambiguous, never by letter or exercise overlap', () => {
     expect(routineFor({ title: ' treino A ' }, [routine()]).id).toBe('a')
     expect(routineFor({ title: 'Treino A antigo' }, [routine()])).toBeNull()

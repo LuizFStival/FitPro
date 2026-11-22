@@ -1,6 +1,7 @@
 import { ordered, routineFor } from './analysis.js'
 import { portugueseExerciseName } from './exercisePresentation.js'
 import { durationMinutes } from './workoutMetrics.js'
+import { dedupeWorkouts } from './workoutDedup.js'
 
 export const CSV_COLUMNS = [
   'data_inicio', 'data_fim', 'duracao_treino_min', 'treino_id', 'rotina_id', 'rotina_nome',
@@ -50,7 +51,7 @@ export function exportRows(snapshot, data, preferences, range, now = Date.now())
   const routines = snapshot.routines || []
   const templates = new Map((snapshot.templates || []).map(template => [template.id, template]))
   const analyzedRoutines = new Map((data?.routines || []).map(routine => [routine.id, routine]))
-  return (snapshot.workouts || [])
+  return dedupeWorkouts(snapshot.workouts, now)
     .filter(workout => {
       const at = Date.parse(workout.start_time)
       return Number.isFinite(at) && at >= range.from && at <= range.to

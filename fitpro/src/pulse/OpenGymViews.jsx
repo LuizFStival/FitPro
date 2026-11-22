@@ -6,7 +6,7 @@ import LineChart from '../components/LineChart.jsx'
 import { _setLangState } from '../lib/i18n-core.js'
 import { MUSCLE_NAME } from '../lib/body-map-model.js'
 import { DAY, statusText } from './analysis.js'
-import { dayKey, deriveInsights, MUSCLE_LABELS, routineMuscles, shiftDay, weekStart } from './insights.js'
+import { dayKey, deriveInsights, MUSCLE_GROUPS, MUSCLE_LABELS, routineMuscles, shiftDay, targetBand, targetLevels, weekStart } from './insights.js'
 import { metricSummary } from './metricPresentation.js'
 
 // This build is pt-BR only. Shared rendering components use the same translation core as openGym.
@@ -52,7 +52,7 @@ export function OpenGymHome({ api, data, now, openRoutine, go }) {
   const insights = useMemo(() => deriveInsights(api.snapshot, now), [api.snapshot, now])
   return <div className="og-home-grid"><div className="og-column"><WeekCard {...{ api, data, insights, now, openRoutine, go }} /><WeightCard {...{ insights, api }} /></div>
     <div className="og-column"><section className="card og-streak"><div className="section-head"><h2>Sua constância</h2><span>↗</span></div><div className="og-streak-head"><b>{insights.streak}</b><div><strong>semanas seguidas</strong><span>com pelo menos um treino</span></div></div><div className="og-streak-meta"><span><b>{insights.weekWorkouts.length}</b> esta semana</span><span><b>{insights.monthCount}</b> neste mês</span><span><b>{fmt(data.frequency)}</b>/sem · 30 dias</span></div><button className="og-choice" onClick={() => go('stats')}>Explorar estatísticas →</button></section>
-      <section className="card"><div className="section-head"><h2>Equilíbrio da semana</h2><button className="text" onClick={() => go('stats')}>Detalhes</button></div><BodyMap load={insights.muscles.load} className="og-home-body" /><p className="muted">{insights.muscles.totalSets ? `${insights.muscles.knownSets} de ${insights.muscles.totalSets} séries com grupo muscular identificado.` : 'Sem séries registradas nesta semana. Veja outros períodos nas estatísticas.'}</p></section>
+      <section className="card"><div className="section-head"><h2>Equilíbrio da semana</h2><button className="text" onClick={() => go('stats')}>Detalhes</button></div><BodyMap load={insights.muscles.bodyLoad} levels={targetLevels(insights.muscles.bodyLoad)} className="og-home-body target-map" /><p className="muted">{insights.muscles.totalSets ? `${insights.muscles.knownSets} de ${insights.muscles.totalSets} séries diretas com grupo muscular identificado.` : 'Sem séries registradas nesta semana. Veja outros períodos nas estatísticas.'}</p></section>
       <section className="card"><div className="section-head"><h2>Antes de treinar</h2><span className="pill">{data.alerts.length} em atenção</span></div>{data.alerts.length ? data.alerts.slice(0, 2).map(e => <button className="alert-link" key={e.key} onClick={() => openRoutine(e.routineId)}><strong>{e.title}</strong><span>{e.routineTitle} · {e.streak} sessões sem progresso →</span></button>) : <p className="muted">Sem estagnação recente nos exercícios ativos. Abra sua rotina para acompanhar a evolução.</p>}<button className="og-choice" onClick={() => go('alerts')}>Ver estagnação por treino →</button></section>
     </div></div>
 }
@@ -79,19 +79,24 @@ export function ActivityCard({ workouts, now }) {
 
 function BalanceCard({ api, now }) {
   const [view, setView] = useState('radar')
-  const [range, setRange] = useState('week'), [offset, setOffset] = useState(0), [selected, setSelected] = useState(null)
+  const [range, setRange] = useState('week'), [offset, setOffset] = useState(0), [selected, setSelected] = useState(null), [mode, setMode] = useState('direct')
   const end = offset && range === 'week' ? +shiftDay(weekStart(now), (offset + 1) * 7) - 1 : now
-  const info = useMemo(() => deriveInsights(api.snapshot, end, range), [api.snapshot, end, range])
-  const rows = Object.entries(info.muscles.load).sort((a, b) => b[1] - a[1])
+  const info = useMemo(() => deriveInsights(api.snapshot, end, range, { muscleMode: mode }), [api.snapshot, end, range, mode])
+  const rows = MUSCLE_GROUPS.map(group => [group.key, info.muscles.groups[group.key], group.label])
   const contributors = info.muscles.contributors[selected] || []
-  return <section className="card og-balance"><div className="section-head"><h2>Equilíbrio muscular</h2><span>Séries realizadas</span></div>{tabs([['week', 'Semana'], ['30', '30 dias'], ['90', '90 dias']], range, v => { setRange(v); setSelected(null) }, 'Período do equilíbrio muscular')}
+  const pushPull = info.muscles.pushPull
+  return <section className="card og-balance"><div className="section-head"><h2>Equilíbrio muscular</h2><span>Média semanal</span></div>{tabs([['week', 'Semana'], ['30', '30 dias'], ['90', '90 dias']], range, v => { setRange(v); setSelected(null) }, 'Período do equilíbrio muscular')}
     {range === 'week' && <div className="month-nav"><button aria-label="Semana muscular anterior" onClick={() => setOffset(n => n - 1)}>‹</button><strong>{offset ? `${date(info.weekStart)} a ${date(end)}` : 'Esta semana'}</strong><button aria-label="Próxima semana muscular" disabled={!offset} onClick={() => setOffset(n => n + 1)}>›</button></div>}
+    {tabs([['direct', 'Séries diretas'], ['equivalent', 'Séries equivalentes']], mode, value => { setMode(value); setSelected(null) }, 'Regra de crédito muscular')}
+    <p className="og-mode-help">{mode === 'direct' ? 'Somente o músculo primário recebe 1 série.' : 'Músculo primário recebe 1; cada secundário recebe 0,4.'}</p>
     {tabs([['radar', 'Teia muscular'], ['body', 'Mapa corporal']], view, setView, 'Visualização muscular')}
-    {view === 'radar' ? <MuscleRadar load={info.muscles.load} /> : <><BodyMap load={info.muscles.load} onMuscle={m => setSelected(s => s === m ? null : m)} selected={selected} className="tappable" />
-    <div className="og-map-legend"><span>Menos</span>{[0, 1, 2, 3, 4].map(i => <i key={i} className={`l${i}`} />)}<span>Mais séries</span></div>
+    {view === 'radar' ? <MuscleRadar groups={info.muscles.groups} mode={mode} /> : <><BodyMap load={info.muscles.bodyLoad} levels={targetLevels(info.muscles.bodyLoad)} onMuscle={m => setSelected(s => s === m ? null : m)} selected={selected} className="tappable target-map" />
+    <div className="og-map-legend target-legend"><span><i className="below" />Abaixo de 10</span><span><i className="target" />Entre 10 e 20</span><span><i className="above" />Acima de 20</span></div>
     <p className="muted">Toque no músculo para ver quais exercícios o trabalharam.</p>
-    {selected ? <div className="og-muscle-detail"><h3>{MUSCLE_LABELS[selected]} · {fmt(info.muscles.load[selected] || 0)} séries equivalentes</h3>{contributors.length ? contributors.map(e => <div className="history-row" key={e.id}><div><strong>{e.title}</strong><small>{e.routine}</small></div><span>{fmt(e.sets)}</span></div>) : <p className="muted">Nenhuma série com esse grupo identificado no período.</p>}<button className="text" onClick={() => setSelected(null)}>Ver todos os músculos</button></div> : <div className="og-muscle-bars">{rows.slice(0, 5).map(([m, value]) => <div key={m}><span>{MUSCLE_LABELS[m]}</span><meter min={0} max={rows[0]?.[1] || 1} value={value} /><b>{fmt(value)}</b></div>)}</div>}
-    </>}<p className="footnote">{info.muscles.knownSets}/{info.muscles.totalSets} séries com músculos identificados pela API. Primário = 1; secundário = 0,4, como no openGym. Cor indica distribuição relativa, não hipertrofia ou recuperação.</p>
+    {selected ? <div className="og-muscle-detail"><h3>{MUSCLE_LABELS[selected]} · {fmt(info.muscles.bodyLoad[selected] || 0)} séries/semana</h3>{contributors.length ? contributors.map(e => <div className="history-row" key={e.id}><div><strong>{e.title}</strong><small>{e.routine}</small></div><span>{fmt(e.sets)}/sem</span></div>) : <p className="zero-muscle">0 séries/semana neste grupo.</p>}<button className="text" onClick={() => setSelected(null)}>Ver todos os músculos</button></div> : <div className="og-muscle-bars">{rows.map(([key, value, label]) => <div key={key} className={`${targetBand(value)}${!value ? ' zero' : ''}`}><span>{label}</span><meter min={0} max={Math.max(20, ...rows.map(row => row[1]))} value={value} /><b>{fmt(value)}</b></div>)}</div>}
+    </>}
+    <div className={`push-pull ${pushPull.alert ? 'alert' : ''}`}><div><strong>Empurrar × Puxar</strong><small>Séries diretas por semana</small></div><div className="push-pull-values"><span><b>{fmt(pushPull.push)}</b> empurrar</span><span><b>{fmt(pushPull.pull)}</b> puxar</span></div><p>{pushPull.ratio == null ? 'Sem séries diretas para calcular a razão.' : pushPull.alert ? `${pushPull.dominant} está ${Number.isFinite(pushPull.ratio) ? fmt(pushPull.ratio) + '×' : 'sem contraparte'} acima do lado oposto. Alerta acima de 1,4×.` : `Razão ${fmt(pushPull.ratio)}× · dentro do limite de 1,4×.`}</p></div>
+    <p className="footnote">{info.muscles.knownSets}/{info.muscles.totalSets} séries válidas com músculo identificado; aquecimentos ignorados. Média calculada em {fmt(info.muscles.weeks)} semana(s). A cor mostra somente a distância da faixa de 10–20, não hipertrofia nem recuperação.{info.duplicateCount ? ` ${info.duplicateCount} sessão(ões) duplicada(s) da Hevy ignorada(s).` : ''}</p>
   </section>
 }
 
