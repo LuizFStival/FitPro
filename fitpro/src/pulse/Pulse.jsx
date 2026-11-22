@@ -10,6 +10,7 @@ import ExecutionVideo from './ExecutionVideo.jsx'
 import ProgressStatus from './ProgressStatus.jsx'
 import ExerciseNames from './ExerciseNames.jsx'
 import WorkoutHistory from './WorkoutHistory.jsx'
+import CsvExport from './CsvExport.jsx'
 import { durationMinutes, formatDuration } from './workoutMetrics.js'
 import { formatDistance, formatSeconds, formatSpeed } from './metricPresentation.js'
 
@@ -92,6 +93,7 @@ export default function Pulse({ previewSnapshot = null }) {
         {data.alerts.length ? data.alerts.map(e => <section key={e.key}><h3>{e.routineTitle}</h3><Exercise item={e} expanded={expanded} setExpanded={setExpanded} /></section>) : <div className="empty"><span className="green">✓</span><h2>Sem alertas recentes</h2><p>Consulte cada treino para ver o histórico e exercícios sem dados suficientes.</p></div>}
       </> : <>
         <Connection api={api} demo={!!previewSnapshot} />
+        {api.snapshot && <CsvExport snapshot={api.snapshot} data={data} preferences={api.preferences} now={now} />}
         <ExerciseNames routines={data.routines} rename={rename} />
         <section className="card"><h2>Rotinas visíveis</h2><p className="muted">Ative apenas os treinos atuais. Desativar não apaga o histórico na Hevy.</p>{data.routines.map(r => <label className="routine-toggle" key={r.id}><span>{r.title}</span><input type="checkbox" checked={r.active} onChange={e => api.setPreferences(p => ({ ...p, active: { ...p.active, [r.id]: e.target.checked } }))} /></label>)}</section>
         <section className="card"><h2>Regras da análise</h2><label>Identificar retorno após pausa de<select value={api.preferences.pauseDays || 14} onChange={e => api.setPreferences(p => ({ ...p, pauseDays: Number(e.target.value) }))}>{[10, 14, 21, 30].map(n => <option key={n} value={n}>Mais de {n} dias</option>)}</select></label><p className="muted">Uma volta após pausa cria uma nova referência e não entra na sequência de estagnação.</p><p className="muted">{data.unmatched} sessão(ões) sem vínculo inequívoco com uma rotina atual. Permanecem na frequência e no histórico, sem misturar os alertas.</p><p className="muted">Os exercícios reconhecidos aparecem em português em todas as telas. Você pode personalizar o nome em “Nomes dos exercícios”, nesta tela; ali também ficam o original e o ID. Nomes personalizados são locais. Equivalências da versão anterior ainda não são importadas.</p></section>

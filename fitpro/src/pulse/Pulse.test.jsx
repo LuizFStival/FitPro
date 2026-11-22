@@ -223,3 +223,16 @@ it('shows Hevy cardio time, distance and speed instead of reporting no comparabl
   expect(container.querySelector('[aria-label="Métrica de evolução"]').textContent).toContain('DistânciaTempoVelocidade')
   expect(container.querySelector('.og-chart-summary').textContent).toContain('3,6 km')
 })
+
+it('offers weekly, monthly and custom CSV exports from settings', async () => {
+  await act(async () => root.render(<Pulse previewSnapshot={snapshot} />))
+  await click('Config')
+  const section = container.querySelector('.csv-export')
+  expect(section.textContent).toContain('CSV para análise')
+  expect(section.textContent).toContain('Esta semanaEste mêsPersonalizado')
+  expect(section.textContent).toContain('séries para exportar')
+  const custom = [...section.querySelectorAll('button')].find(button => button.textContent === 'Personalizado')
+  await act(async () => custom.click())
+  expect(section.querySelectorAll('input[type="date"]')).toHaveLength(2)
+  expect(section.textContent).toContain('sem incluir sua chave da Hevy')
+})
