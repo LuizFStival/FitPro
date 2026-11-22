@@ -3,6 +3,7 @@ import { portugueseExerciseName, executionGuide } from './exercisePresentation.j
 export const DAY = 86400000
 export const normalizeTitle = value => String(value || '').trim().toLocaleLowerCase('pt-BR').replace(/\s+/g, ' ')
 const finite = value => value !== null && value !== '' && Number.isFinite(Number(value)) && Number(value) >= 0
+const positive = value => finite(value) && Number(value) > 0
 export const isAlert = item => item.status === 'warning' || item.status === 'critical'
 export const defaultActive = routine => !/\(iniciante\)/i.test(routine.title || '')
 export const ordered = items => (items || []).map((item, position) => ({ ...item, position })).sort((a, b) => (a.index ?? a.position) - (b.index ?? b.position))
@@ -14,20 +15,42 @@ export function routineFor(workout, routines) {
 }
 
 export function setMetrics(sets) {
-  const valid = (sets || []).filter(s => s.type === 'normal' && finite(s.weight_kg) && finite(s.reps) && Number(s.reps) > 0)
-  if (!valid.length) return null
-  const weight = Math.max(...valid.map(s => Number(s.weight_kg)))
-  return { weight, reps: valid.reduce((n, s) => n + Number(s.reps), 0),
-    volume: valid.reduce((n, s) => n + Number(s.weight_kg) * Number(s.reps), 0),
-    bestReps: Math.max(...valid.filter(s => Number(s.weight_kg) === weight).map(s => Number(s.reps))), sets: valid.length,
-    setDetails: valid.map(s => ({ weight: Number(s.weight_kg), reps: Number(s.reps) })) }
+  const normal = (sets || []).filter(s => s.type === 'normal')
+  const strength = normal.filter(s => finite(s.weight_kg) && positive(s.reps))
+  if (strength.length) {
+    const weight = Math.max(...strength.map(s => Number(s.weight_kg)))
+    return { kind: 'strength', weight, reps: strength.reduce((n, s) => n + Number(s.reps), 0),
+      volume: strength.reduce((n, s) => n + Number(s.weight_kg) * Number(s.reps), 0),
+      bestReps: Math.max(...strength.filter(s => Number(s.weight_kg) === weight).map(s => Number(s.reps))), sets: strength.length,
+      setDetails: strength.map(s => ({ weight: Number(s.weight_kg), reps: Number(s.reps) })) }
+  }
+  const cardio = normal.filter(s => positive(s.duration_seconds) || positive(s.distance_meters))
+  if (!cardio.length) return null
+  const duration = cardio.reduce((n, s) => n + (positive(s.duration_seconds) ? Number(s.duration_seconds) : 0), 0)
+  const distance = cardio.reduce((n, s) => n + (positive(s.distance_meters) ? Number(s.distance_meters) : 0), 0)
+  return { kind: 'cardio', duration, distance, speed: duration && distance ? distance / duration * 3.6 : null, sets: cardio.length,
+    setDetails: cardio.map(s => ({ duration: positive(s.duration_seconds) ? Number(s.duration_seconds) : 0, distance: positive(s.distance_meters) ? Number(s.distance_meters) : 0 })) }
 }
 
 export function progressReasons(current, previous) {
   if (!previous) return []
+  if (current.kind === 'cardio' && previous.kind === 'cardio') return [
+    current.distance > previous.distance + 1 && 'distância',
+    current.speed != null && previous.speed != null && current.speed > previous.speed + 0.05 && 'ritmo',
+    !current.distance && !previous.distance && current.duration > previous.duration + 1 && 'tempo',
+  ].filter(Boolean)
+  if (current.kind !== 'strength' || previous.kind !== 'strength') return []
   return [current.weight > previous.weight + 0.001 && 'carga',
     current.weight === previous.weight && (current.reps > previous.reps || current.bestReps > previous.bestReps) && 'repetições',
     current.volume > previous.volume + 0.001 && 'volume'].filter(Boolean)
+}
+
+function regressed(current, previous) {
+  if (current.kind === 'cardio' && previous.kind === 'cardio') {
+    if (current.distance || previous.distance) return current.distance < previous.distance - 1 || (Math.abs(current.distance - previous.distance) <= 1 && current.speed != null && previous.speed != null && current.speed < previous.speed - 0.05)
+    return current.duration < previous.duration - 1
+  }
+  return current.kind === 'strength' && previous.kind === 'strength' && (current.volume < previous.volume || current.weight < previous.weight)
 }
 
 export function analyze(snapshot, preferences = {}, now = Date.now()) {
@@ -55,7 +78,7 @@ export function analyze(snapshot, preferences = {}, now = Date.now()) {
         const reasons = returning ? [] : progressReasons(metrics, previous)
         streak = !previous || returning || reasons.length ? 0 : streak + 1
         sessions.push({ ...metrics, id: workout.id, at, gap, reasons, streak,
-          trend: returning ? 'return' : !previous ? 'new' : reasons.length ? 'up' : metrics.volume < previous.volume || metrics.weight < previous.weight ? 'down' : 'same' })
+          trend: returning ? 'return' : !previous ? 'new' : reasons.length ? 'up' : regressed(metrics, previous) ? 'down' : 'same' })
       }
       const latest = sessions.at(-1)
       const age = latest ? Math.floor((now - latest.at) / DAY) : null
@@ -84,10 +107,11 @@ export function statusText(item) {
 }
 
 export function explanation(item) {
-  if (!item.latest) return 'Ainda não há séries normais com carga e repetições neste exercício e treino.'
+  if (!item.latest) return 'Ainda não há uma execução comparável registrada neste exercício e treino.'
   if (item.status === 'stale') return `Última sessão há ${item.age} dias. Fora dos alertas atuais.`
   if (item.status === 'return') return `Voltou após ${item.latest.gap} dias. Nova referência, sem alerta de estagnação.`
   if (item.status === 'new') return 'A próxima sessão permitirá a primeira comparação.'
   if (item.status === 'up') return `Aumentou ${item.latest.reasons.join(' e ')} em relação à sessão anterior deste treino.`
+  if (item.latest.kind === 'cardio') return `${item.streak} sessão(ões) seguida(s) sem aumento de distância, tempo ou ritmo. Atenção a partir de 3; persistente a partir de 6.`
   return `${item.streak} sessão(ões) seguida(s) sem aumento de carga, repetições ou volume. Atenção a partir de 3; persistente a partir de 6.`
 }

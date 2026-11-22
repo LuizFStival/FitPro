@@ -10,10 +10,10 @@ export function weekStart(value) {
   return d
 }
 export const shiftDay = (value, offset) => { const d = new Date(value); d.setDate(d.getDate() + offset); return d }
-export const MUSCLE_LABELS = { trapezius: 'Trapézio', deltoids: 'Ombros', chest: 'Peitoral', 'upper-back': 'Costas', serratus: 'Serrátil', biceps: 'Bíceps', triceps: 'Tríceps', forearm: 'Antebraços', abs: 'Abdômen', obliques: 'Oblíquos', 'lower-back': 'Lombar', gluteal: 'Glúteos', quadriceps: 'Quadríceps', hamstring: 'Posteriores', adductors: 'Adutores', 'hip-flexors': 'Flexores do quadril', calves: 'Panturrilhas', tibialis: 'Tibial' }
-const MAP = { abdominals: 'abs', abs: 'abs', biceps: 'biceps', calves: 'calves', chest: 'chest', forearms: 'forearm', glutes: 'gluteal', hamstrings: 'hamstring', lats: 'upper-back', lower_back: 'lower-back', upper_back: 'upper-back', quadriceps: 'quadriceps', shoulders: 'deltoids', triceps: 'triceps', traps: 'trapezius', adductors: 'adductors', abductors: 'gluteal', obliques: 'obliques' }
+export const MUSCLE_LABELS = { trapezius: 'Trapézio', deltoids: 'Ombros', chest: 'Peitoral', 'upper-back': 'Costas', serratus: 'Serrátil', biceps: 'Bíceps', triceps: 'Tríceps', forearm: 'Antebraços', abs: 'Abdômen', obliques: 'Oblíquos', 'lower-back': 'Lombar', gluteal: 'Glúteos', quadriceps: 'Quadríceps', hamstring: 'Posteriores', adductors: 'Adutores', 'hip-flexors': 'Flexores do quadril', calves: 'Panturrilhas', tibialis: 'Tibial', 'cardiovascular system': 'Cardiovascular' }
+const MAP = { abdominals: 'abs', abs: 'abs', biceps: 'biceps', calves: 'calves', chest: 'chest', forearms: 'forearm', glutes: 'gluteal', hamstrings: 'hamstring', lats: 'upper-back', lower_back: 'lower-back', upper_back: 'upper-back', quadriceps: 'quadriceps', shoulders: 'deltoids', triceps: 'triceps', traps: 'trapezius', adductors: 'adductors', abductors: 'gluteal', obliques: 'obliques', cardio: 'cardiovascular system' }
 const valid = v => v != null && v !== '' && Number.isFinite(Number(v))
-export const workingSets = e => (e.sets || []).filter(s => s.type !== 'warmup' && ((valid(s.reps) && s.reps > 0) || (valid(s.duration_seconds) && s.duration_seconds > 0)))
+export const workingSets = e => (e.sets || []).filter(s => s.type !== 'warmup' && ((valid(s.reps) && s.reps > 0) || (valid(s.duration_seconds) && s.duration_seconds > 0) || (valid(s.distance_meters) && s.distance_meters > 0)))
 
 export function effortOfSet(set) {
   if (valid(set.rpe) && Number(set.rpe) >= 6 && Number(set.rpe) <= 10) return Number(set.rpe)

@@ -200,5 +200,26 @@ it('keeps the gym view compact, with comparison details hidden and visual routin
   expect(container.querySelector('.routine-choice[aria-pressed=true]').getAttribute('aria-label')).toBe('Treino B')
   expect(container.querySelector('details.exercise[open]')).toBeNull()
   expect(container.querySelector('.progress-change')).toBeNull()
-  expect(container.querySelector('.progress-advice').textContent).toContain('Ainda não há séries normais')
+  expect(container.querySelector('.progress-advice').textContent).toContain('Ainda não há uma execução comparável')
+})
+
+it('shows Hevy cardio time, distance and speed instead of reporting no comparable sets', async () => {
+  const cardio = { index: 0, exercise_template_id: 'cardio', title: 'Treadmill', sets: [{ type: 'normal', distance_meters: 3600, duration_seconds: 1800 }] }
+  const routines = [{ id: 'c', title: 'Treino C', exercises: [cardio] }]
+  const workouts = [7, 1].map((ago, i) => ({ id: `cardio-${i}`, routine_id: 'c', title: 'Treino C', start_time: new Date(now - ago * DAY).toISOString(), end_time: new Date(now - ago * DAY + 45 * 60000).toISOString(), exercises: [{ ...cardio, sets: [{ type: 'normal', distance_meters: i ? 3600 : 3000, duration_seconds: 1800 }] }] }))
+  const templates = [{ id: 'cardio', title: 'Treadmill', primary_muscle_group: 'cardio' }]
+  await act(async () => root.render(<Pulse previewSnapshot={{ syncedAt: now, routines, workouts, templates }} />))
+  await click('Treino')
+  const exercise = container.querySelector('details.exercise')
+  expect(exercise.querySelector('.exercise-last').textContent).toContain('3,6 km')
+  expect(exercise.querySelector('.exercise-last').textContent).toContain('30 min')
+  await act(async () => { exercise.open = true; exercise.dispatchEvent(new Event('toggle')) })
+  expect(exercise.querySelector('.performance-value').textContent).toContain('3,6 kmem 30 min')
+  expect(exercise.querySelector('.progress-change').textContent).toContain('3 km → 3,6 km')
+  expect(exercise.querySelector('.progress-status').textContent).toContain('7,2 km/h')
+  expect(exercise.querySelector('.exercise-extra').textContent).toContain('Distância')
+  expect(container.textContent).not.toContain('Sem séries comparáveis')
+  await click('Estatísticas')
+  expect(container.querySelector('[aria-label="Métrica de evolução"]').textContent).toContain('DistânciaTempoVelocidade')
+  expect(container.querySelector('.og-chart-summary').textContent).toContain('3,6 km')
 })

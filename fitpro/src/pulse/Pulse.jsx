@@ -11,6 +11,7 @@ import ProgressStatus from './ProgressStatus.jsx'
 import ExerciseNames from './ExerciseNames.jsx'
 import WorkoutHistory from './WorkoutHistory.jsx'
 import { durationMinutes, formatDuration } from './workoutMetrics.js'
+import { formatDistance, formatSeconds, formatSpeed } from './metricPresentation.js'
 
 const number = value => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(value)
 const date = value => value ? new Date(value).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : 'Sem sessão'
@@ -29,14 +30,16 @@ function Exercise({ item, expanded, setExpanded }) {
   const open = expanded === item.key
   return <details className={`exercise exercise-${item.status}`} open={open} onToggle={event => { if (event.target === event.currentTarget) { const isOpen = event.currentTarget.open; setExpanded(current => isOpen ? item.key : current === item.key ? null : current) } }}>
     <summary><span className="order">{item.order + 1}</span><div className="exercise-main"><strong>{item.title}</strong><span className={`status ${item.status}`}>{statusText(item)}{item.streak > 0 && !['stale', 'return'].includes(item.status) ? <span className="summary-streak"> · {item.streak} sem progresso</span> : null}</span>
-      {!open && (item.latest ? <span className="exercise-last"><span>Última · {date(item.latest.at)}</span><span><b>{number(item.latest.weight)} kg</b> máx. · <b>{item.latest.reps} reps</b> totais</span></span> : <small>Sem carga e repetições registradas</small>)}
+      {!open && (item.latest ? <span className="exercise-last"><span>Última · {date(item.latest.at)}</span>{item.latest.kind === 'cardio'
+        ? <span><b>{item.latest.distance ? formatDistance(item.latest.distance) : formatSeconds(item.latest.duration)}</b>{item.latest.distance && item.latest.duration ? ` · ${formatSeconds(item.latest.duration)}` : ''}{item.latest.speed ? ` · ${formatSpeed(item.latest.speed)}` : ''}</span>
+        : <span><b>{number(item.latest.weight)} kg</b> máx. · <b>{item.latest.reps} reps</b> totais</span>}</span> : <small>Sem dados comparáveis registrados</small>)}
       </div><span className="chevron">⌄</span></summary>
     <div className="exercise-body">
       <ProgressStatus item={item} />
       {open && <ExecutionVideo compact key={item.guide?.video || item.id} guide={item.guide} title={item.title} />}
       {item.latest && <details className="exercise-extra"><summary>Histórico e detalhes · {item.sessions.length} sessões</summary>
         <div className="timeline" aria-label="Evolução nas últimas oito sessões">{item.sessions.slice(-8).map(s => <span key={s.id} className={s.trend} title={`${date(s.at)}: ${trendNames[s.trend]}`}><b>{symbols[s.trend]}</b><small>{date(s.at)}</small></span>)}</div>
-        <p className="progress-rule">Somente este exercício neste treino. Comparamos carga máxima, repetições e volume das séries normais; aquecimentos e drop sets ficam fora. Atenção em 3 sessões sem progresso; persistente em 6. Retornos de pausa criam uma nova referência.</p><div className="table-wrap"><table><caption>Últimas sessões deste exercício neste treino</caption><thead><tr><th>Data</th><th>Kg máx.</th><th>Séries</th><th>Reps totais</th><th>Evolução</th></tr></thead><tbody>{item.sessions.slice(-6).reverse().map(s => <tr key={s.id}><td>{date(s.at)}</td><td>{number(s.weight)}</td><td>{s.sets}</td><td>{s.reps}</td><td>{trendNames[s.trend]}</td></tr>)}</tbody></table></div></details>}
+        <p className="progress-rule">Somente este exercício neste treino. {item.latest.kind === 'cardio' ? 'Comparamos tempo, distância e velocidade das séries normais.' : 'Comparamos carga máxima, repetições e volume das séries normais.'} Aquecimentos e drop sets ficam fora. Atenção em 3 sessões sem progresso; persistente em 6. Retornos de pausa criam uma nova referência.</p><div className="table-wrap"><table><caption>Últimas sessões deste exercício neste treino</caption><thead>{item.latest.kind === 'cardio' ? <tr><th>Data</th><th>Distância</th><th>Tempo</th><th>Velocidade</th><th>Evolução</th></tr> : <tr><th>Data</th><th>Kg máx.</th><th>Séries</th><th>Reps totais</th><th>Evolução</th></tr>}</thead><tbody>{item.sessions.slice(-6).reverse().map(s => s.kind === 'cardio' ? <tr key={s.id}><td>{date(s.at)}</td><td>{formatDistance(s.distance)}</td><td>{formatSeconds(s.duration)}</td><td>{formatSpeed(s.speed)}</td><td>{trendNames[s.trend]}</td></tr> : <tr key={s.id}><td>{date(s.at)}</td><td>{number(s.weight)}</td><td>{s.sets}</td><td>{s.reps}</td><td>{trendNames[s.trend]}</td></tr>)}</tbody></table></div></details>}
     </div>
   </details>
 }

@@ -7,6 +7,7 @@ import { _setLangState } from '../lib/i18n-core.js'
 import { MUSCLE_NAME } from '../lib/body-map-model.js'
 import { DAY, statusText } from './analysis.js'
 import { dayKey, deriveInsights, MUSCLE_LABELS, routineMuscles, shiftDay, weekStart } from './insights.js'
+import { metricSummary } from './metricPresentation.js'
 
 // This build is pt-BR only. Shared rendering components use the same translation core as openGym.
 _setLangState('pt-BR', { ...Object.fromEntries(Object.entries(MUSCLE_NAME).map(([slug, name]) => [name, MUSCLE_LABELS[slug] || name])),
@@ -98,14 +99,20 @@ function ProgressCard({ data }) {
   const [routineId, setRoutineId] = useState(''), [exerciseId, setExerciseId] = useState(''), [metric, setMetric] = useState('weight')
   const routine = data.active.find(r => r.id === routineId) || data.active[0]
   const exercise = routine?.exercises.find(e => e.id === exerciseId) || routine?.exercises[0]
-  const points = useMemo(() => (exercise?.sessions || []).map(s => ({ t: s.at, d: dayKey(s.at), y: s[metric], note: `${s.reps} reps · ${s.sets} séries` })), [exercise, metric])
+  const cardio = exercise?.latest?.kind === 'cardio'
+  const options = cardio
+    ? [[exercise.sessions.some(s => s.distance > 0) && 'distance', 'Distância'], [exercise.sessions.some(s => s.duration > 0) && 'duration', 'Tempo'], [exercise.sessions.some(s => s.speed > 0) && 'speed', 'Velocidade']].filter(([id]) => id)
+    : [['weight', 'Carga'], ['reps', 'Repetições']]
+  const selectedMetric = options.some(([id]) => id === metric) ? metric : options[0]?.[0]
+  const config = { weight: { unit: 'kg', value: s => s.weight }, reps: { unit: 'reps', value: s => s.reps }, distance: { unit: 'km', value: s => s.distance / 1000 }, duration: { unit: 'min', value: s => s.duration / 60 }, speed: { unit: 'km/h', value: s => s.speed } }[selectedMetric]
+  const points = useMemo(() => config ? (exercise?.sessions || []).filter(s => Number.isFinite(config.value(s)) && config.value(s) > 0).map(s => ({ t: s.at, d: dayKey(s.at), y: config.value(s), note: metricSummary(s) })) : [], [exercise, selectedMetric])
   return <section className="card og-progress"><h2>Evolução por exercício</h2>
     {tabs(data.active.map(r => [r.id, title(r)]), routine?.id, id => { setRoutineId(id); setExerciseId('') }, 'Rotina da evolução')}
     <div className="og-progress-select"><label>Exercício<select value={exercise?.id || ''} onChange={e => setExerciseId(e.target.value)}>{routine?.exercises.map((e, i) => <option key={`${e.key}-${i}`} value={e.id}>{i + 1}. {e.title}</option>)}</select></label></div>
     {exercise && <h3 className="og-chart-title">{exercise.title}</h3>}
-    {tabs([['weight', 'Carga'], ['reps', 'Repetições']], metric, setMetric, 'Métrica de evolução')}
-    {points.length ? <><div className="og-chart-summary"><strong>{fmt(points.at(-1).y)} <small>{metric === 'weight' ? 'kg' : 'reps'}</small></strong><span>Última sessão · {date(points.at(-1).t)}</span></div><LineChart points={points} unit={metric === 'weight' ? 'kg' : 'reps'} h={190} /><p className="footnote">{date(points[0].t)} a {date(points.at(-1).t)} · {points.length} sessões · toque no gráfico para detalhes</p></> : <p className="muted">Sem sessões comparáveis para este exercício nesta rotina.</p>}
-    {exercise && <p className={`status ${exercise.status}`}>{statusText(exercise)}{!['empty', 'new', 'stale', 'return'].includes(exercise.status) ? ` · ${exercise.streak} sessões sem progresso` : ''}</p>}<p className="footnote">Somente este exercício neste treino. Carga máxima por sessão; repetições somadas das séries normais.</p>
+    {options.length > 0 && tabs(options, selectedMetric, setMetric, 'Métrica de evolução')}
+    {points.length ? <><div className="og-chart-summary"><strong>{fmt(points.at(-1).y)} <small>{config.unit}</small></strong><span>Última sessão · {date(points.at(-1).t)}</span></div><LineChart points={points} unit={config.unit} h={190} /><p className="footnote">{date(points[0].t)} a {date(points.at(-1).t)} · {points.length} sessões · toque no gráfico para detalhes</p></> : <p className="muted">Sem sessões comparáveis para este exercício nesta rotina.</p>}
+    {exercise && <p className={`status ${exercise.status}`}>{statusText(exercise)}{!['empty', 'new', 'stale', 'return'].includes(exercise.status) ? ` · ${exercise.streak} sessões sem progresso` : ''}</p>}<p className="footnote">Somente este exercício neste treino. {cardio ? 'Tempo e distância somados; velocidade média calculada a partir deles.' : 'Carga máxima por sessão; repetições somadas das séries normais.'}</p>
   </section>
 }
 

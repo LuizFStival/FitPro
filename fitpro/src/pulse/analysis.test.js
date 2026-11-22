@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { analyze, DAY, routineFor, setMetrics } from './analysis.js'
 const now = Date.UTC(2026, 10, 2, 12)
 const exercise = (id = 'abs', weight = 40, reps = 10) => ({ exercise_template_id: id, title: 'Abdominal (Máquina)', sets: [{ type: 'normal', weight_kg: weight, reps }] })
+const cardioExercise = (id = 'spin', duration = 1200, distance = null) => ({ exercise_template_id: id, title: distance ? 'Esteira' : 'Spinning', sets: [{ type: 'normal', duration_seconds: duration, distance_meters: distance }] })
 const routine = (id = 'a', title = 'Treino A') => ({ id, title, exercises: [exercise()] })
 const workout = (id, ago, weight = 40, reps = 10, routine_id = 'a') => ({ id, routine_id, title: 'Treino A', start_time: new Date(now - ago * DAY).toISOString(), exercises: [exercise('abs', weight, reps)] })
 const run = (workouts, prefs = {}, routines = [routine()]) => analyze({ routines, workouts }, prefs, now)
@@ -43,6 +44,23 @@ describe('per-routine plateau', () => {
   })
   it('recognizes total volume even when maximum weight decreases', () => {
     expect(current([workout('1', 7), workout('2', 1, 35, 15)]).latest.reasons).toEqual(['volume'])
+  })
+  it('compares cardio by duration, distance and speed using the Hevy units', () => {
+    expect(setMetrics(cardioExercise('spin', 1250).sets)).toMatchObject({ kind: 'cardio', duration: 1250, distance: 0, sets: 1 })
+    const cardioRoutine = { id: 'a', title: 'Treino A', exercises: [cardioExercise()] }
+    const cardioWorkout = (id, ago, duration, distance = null) => ({ id, routine_id: 'a', title: 'Treino A', start_time: new Date(now - ago * DAY).toISOString(), exercises: [cardioExercise('spin', duration, distance)] })
+    const timed = run([cardioWorkout('1', 7, 1200), cardioWorkout('2', 1, 1500)], {}, [cardioRoutine]).active[0].exercises[0]
+    expect(timed.status).toBe('up'); expect(timed.latest.reasons).toEqual(['tempo'])
+    const distance = run([cardioWorkout('3', 7, 1800, 3000), cardioWorkout('4', 1, 1800, 3600)], {}, [cardioRoutine]).active[0].exercises[0]
+    expect(distance.latest).toMatchObject({ distance: 3600, duration: 1800, speed: 7.2, reasons: ['distância', 'ritmo'] })
+  })
+  it('counts cardio stagnation inside its routine without mixing the same exercise in another routine', () => {
+    const routines = ['a', 'c'].map(id => ({ id, title: `Treino ${id.toUpperCase()}`, exercises: [cardioExercise()] }))
+    const session = (id, routine_id, ago, duration) => ({ id, routine_id, title: `Treino ${routine_id.toUpperCase()}`, start_time: new Date(now - ago * DAY).toISOString(), exercises: [cardioExercise('spin', duration)] })
+    const workouts = [10, 7, 4, 1].map((ago, i) => session(`a${i}`, 'a', ago, 1200)).concat(session('c1', 'c', 1, 1800))
+    const result = run(workouts, {}, routines)
+    expect(result.routines[0].exercises[0].status).toBe('warning')
+    expect(result.routines[1].exercises[0].status).toBe('new')
   })
   it('counts comparisons, not the baseline session; warning starts at three', () => {
     const series = Array.from({ length: 7 }, (_, i) => workout(String(i), 14 - i * 2))
