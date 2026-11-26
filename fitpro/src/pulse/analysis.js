@@ -105,8 +105,9 @@ export function analyze(snapshot, preferences = {}, now = Date.now()) {
           trend: returning ? 'return' : !previous ? 'new' : reasons.length ? 'up' : regressed(metrics, previous) ? 'down' : 'same' })
       }
       const latest = sessions.at(-1)
+      const exerciseSessions = history.get(id) || []
       const firstSessionAt = sessions[0]?.at ?? Infinity
-      const referenceSessions = (history.get(id) || []).filter(session =>
+      const referenceSessions = exerciseSessions.filter(session =>
         session.sourceRoutineId !== routine.id && session.at < firstSessionAt)
       const age = latest ? Math.floor((now - latest.at) / DAY) : null
       const status = !latest ? 'empty' : age > 30 ? 'stale' : latest.trend === 'return' ? 'return' : sessions.length < 2 ? 'new' : streak >= 6 ? 'critical' : streak >= 3 ? 'warning' : latest.trend === 'up' ? 'up' : 'ok'
@@ -118,7 +119,7 @@ export function analyze(snapshot, preferences = {}, now = Date.now()) {
       return { key, id, title: exerciseDisplayName(apiTitle, template, preferences.names?.[id]), apiTitle,
         guide: executionGuide(apiTitle, template?.title, template?.is_custom === true),
         order: exercise.index ?? exercise.position, routineId: routine.id, routineTitle: routine.title, sessions, latest, streak, status, age, equivalentIds: [...equivalentIds], equivalentTitles,
-        referenceSessions, reference: referenceSessions.at(-1),
+        exerciseSessions, referenceSessions, reference: referenceSessions.at(-1),
         nextSession: sessions.length + 1 }
     })
     return { ...routine, active: preferences.active?.[routine.id] ?? defaultActive(routine), exercises,

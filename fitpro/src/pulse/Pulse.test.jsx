@@ -239,16 +239,23 @@ it('shows Hevy cardio time, distance and speed instead of reporting no comparabl
   expect(container.querySelector('.og-chart-summary').textContent).toContain('3,6 km')
 })
 
-it('limits exercise chart points and summary to the selected statistics period', async () => {
+it('shows the same exercise across current and removed routines for the selected period', async () => {
   const chartNow = +new Date(2026, 10, 25, 12)
   vi.spyOn(Date, 'now').mockReturnValue(chartNow)
   const workouts = [100, 48, 12, 4].map(ago => ({
     id: `chart-${ago}`,
-    routine_id: 'b',
-    title: 'Treino B',
+    routine_id: ago === 4 ? 'b' : 'removed-b',
+    title: ago === 4 ? 'Treino B' : 'Treino B antigo',
     start_time: new Date(chartNow - ago * DAY).toISOString(),
-    exercises,
+    exercises: [{ ...exercises[0], sets: [{ ...exercises[0].sets[0], weight_kg: ago === 100 ? 6 : ago === 4 ? 12 : 10 }] }],
   }))
+  workouts.push({
+    id: 'other-exercise',
+    routine_id: 'removed-b',
+    title: 'Treino B antigo',
+    start_time: new Date(chartNow - 8 * DAY).toISOString(),
+    exercises: [{ ...exercises[0], exercise_template_id: 'different-template' }],
+  })
   await act(async () => root.render(<Pulse previewSnapshot={{ ...snapshot, syncedAt: chartNow, workouts }} />))
   await click('Estatísticas')
   const chart = container.querySelector('.og-progress')
@@ -258,6 +265,9 @@ it('limits exercise chart points and summary to the selected statistics period',
   })
   expect(period.querySelector('[aria-pressed=true]').textContent).toBe('30 dias')
   expect(chart.textContent).toContain('2 sessões · toque')
+  expect(chart.querySelector('.og-chart-summary strong').textContent).toContain('12 kg')
+  await act(async () => chart.querySelector('.chart-i').dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 34 })))
+  expect(chart.querySelector('.ctip').textContent).toContain('10 kg · Treino B antigo')
   await choosePeriod('Semana')
   expect(chart.querySelector('.og-chart-summary')).toBeNull()
   expect(chart.textContent).toContain('no período selecionado')
@@ -266,6 +276,15 @@ it('limits exercise chart points and summary to the selected statistics period',
   expect(chart.textContent).toContain('3 sessões · toque')
   expect(chart.querySelector('.og-chart-summary strong').textContent).toContain('10 reps')
   expect(chart.querySelector('[aria-label="Métrica de evolução"] [aria-pressed=true]').textContent).toBe('Repetições')
+  await choosePeriod('Desde o início')
+  expect(chart.textContent).toContain('4 sessões · toque')
+  await click('Carga')
+  await act(async () => chart.querySelector('.chart-i').dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 34 })))
+  expect(chart.querySelector('.ctip').textContent).toContain('6 kg · Treino B antigo')
+  await click('Só esta rotina')
+  expect(chart.textContent).toContain('1 sessão · toque')
+  expect(chart.textContent).toContain('Status nesta rotina · Primeira referência')
+  expect(chart.querySelector('.chart-i polyline')).toBeNull()
 })
 
 it('shows the last comparable load from a removed routine on a fresh workout card', async () => {

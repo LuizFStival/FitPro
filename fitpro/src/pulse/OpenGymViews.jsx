@@ -17,6 +17,9 @@ const date = n => new Date(n).toLocaleDateString('pt-BR', { day: '2-digit', mont
 const title = r => r.title?.match(/^Treino\s+[A-Z]/i)?.[0] || r.title
 const DAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
 const STAT_PERIODS = [['week', 'Semana'], ['30', '30 dias'], ['90', '90 dias']]
+const PROGRESS_PERIODS = [...STAT_PERIODS, ['all', 'Desde o início']]
+const PROGRESS_SCOPES = [['exercise', 'Todas as rotinas'], ['routine', 'Só esta rotina']]
+const NO_SESSIONS = []
 const PROGRESS_METRICS = {
   weight: { unit: 'kg', value: session => session.weight },
   reps: { unit: 'reps', value: session => session.reps },
@@ -100,32 +103,37 @@ function BalanceCard({ api, now }) {
 function ProgressCard({ data, now }) {
   const [routineId, setRoutineId] = useState(''), [exerciseId, setExerciseId] = useState(''), [metric, setMetric] = useState('weight')
   const [range, setRange] = useState('30')
+  const [scope, setScope] = useState('exercise')
   const routine = data.active.find(r => r.id === routineId) || data.active[0]
   const exercise = routine?.exercises.find(e => e.id === exerciseId) || routine?.exercises[0]
-  const cardio = exercise?.latest?.kind === 'cardio'
+  const sessions = (scope === 'routine' ? exercise?.sessions : exercise?.exerciseSessions) ?? NO_SESSIONS
+  const cardio = (sessions.at(-1) ?? exercise?.exerciseSessions.at(-1))?.kind === 'cardio'
   const options = cardio
-    ? [[exercise.sessions.some(s => s.distance > 0) && 'distance', 'Distância'], [exercise.sessions.some(s => s.duration > 0) && 'duration', 'Tempo'], [exercise.sessions.some(s => s.speed > 0) && 'speed', 'Velocidade']].filter(([id]) => id)
+    ? [[sessions.some(s => s.distance > 0) && 'distance', 'Distância'], [sessions.some(s => s.duration > 0) && 'duration', 'Tempo'], [sessions.some(s => s.speed > 0) && 'speed', 'Velocidade']].filter(([id]) => id)
     : [['weight', 'Carga'], ['reps', 'Repetições']]
   const selectedMetric = options.some(([id]) => id === metric) ? metric : options[0]?.[0]
   const config = PROGRESS_METRICS[selectedMetric]
-  const periodStart = statisticsPeriodStart(now, range)
+  const periodStart = range === 'all' ? null : statisticsPeriodStart(now, range)
   const points = useMemo(() => {
     if (!config) return []
-    return (exercise?.sessions || []).flatMap(session => {
-      if (session.at < periodStart || session.at > now) return []
+    return sessions.flatMap(session => {
+      if ((periodStart !== null && session.at < periodStart) || session.at > now) return []
       const value = config.value(session)
       if (!Number.isFinite(value) || value <= 0) return []
-      return [{ t: session.at, d: dayKey(session.at), y: value, note: metricSummary(session) }]
+      const note = [session.sourceTitle, metricSummary(session)].filter(Boolean).join(' · ')
+      return [{ t: session.at, d: dayKey(session.at), y: value, note }]
     })
-  }, [exercise, config, periodStart, now])
+  }, [sessions, config, periodStart, now])
   return <section className="card og-progress"><h2>Evolução por exercício</h2>
-    {tabs(STAT_PERIODS, range, setRange, 'Período da evolução')}
+    {tabs(PROGRESS_PERIODS, range, setRange, 'Período da evolução')}
     {tabs(data.active.map(r => [r.id, title(r)]), routine?.id, id => { setRoutineId(id); setExerciseId('') }, 'Rotina da evolução')}
     <div className="og-progress-select"><label>Exercício<select value={exercise?.id || ''} onChange={e => setExerciseId(e.target.value)}>{routine?.exercises.map((e, i) => <option key={`${e.key}-${i}`} value={e.id}>{i + 1}. {e.title}</option>)}</select></label></div>
     {exercise && <h3 className="og-chart-title">{exercise.title}</h3>}
+    {exercise && tabs(PROGRESS_SCOPES, scope, setScope, 'Histórico da evolução')}
     {options.length > 0 && tabs(options, selectedMetric, setMetric, 'Métrica de evolução')}
-    {points.length ? <><div className="og-chart-summary"><strong>{fmt(points.at(-1).y)} <small>{config.unit}</small></strong><span>Última sessão no período · {date(points.at(-1).t)}</span></div><LineChart points={points} unit={config.unit} h={190} /><p className="footnote">{date(periodStart)} a {date(now)} · {points.length} {points.length === 1 ? 'sessão' : 'sessões'} · toque no gráfico para detalhes</p></> : <p className="muted">Sem dados para este exercício e métrica no período selecionado.</p>}
-    {exercise && <p className={`status ${exercise.status}`}>Status atual · {statusText(exercise)}{!['empty', 'new', 'stale', 'return'].includes(exercise.status) ? ` · ${exercise.streak} sessões sem progresso` : ''}</p>}<p className="footnote">Somente este exercício neste treino. {cardio ? 'Tempo e distância somados; velocidade média calculada a partir deles.' : 'Carga máxima por sessão; repetições somadas das séries normais.'}</p>
+    {points.length ? <><div className="og-chart-summary"><strong>{fmt(points.at(-1).y)} <small>{config.unit}</small></strong><span>Última sessão no período · {date(points.at(-1).t)}</span></div><LineChart points={points} unit={config.unit} h={190} /><p className="footnote">{date(periodStart ?? points[0].t)} a {date(now)} · {points.length} {points.length === 1 ? 'sessão' : 'sessões'} · toque no gráfico para detalhes</p></> : <p className="muted">Sem dados para este exercício e métrica no período selecionado.</p>}
+    {exercise && scope === 'routine' && <p className={`status ${exercise.status}`}>Status nesta rotina · {statusText(exercise)}{!['empty', 'new', 'stale', 'return'].includes(exercise.status) ? ` · ${exercise.streak} sessões sem progresso` : ''}</p>}
+    <p className="footnote">{cardio ? 'Tempo e distância somados; velocidade média calculada a partir deles.' : 'Carga máxima por sessão; repetições somadas das séries normais.'}</p>
   </section>
 }
 
