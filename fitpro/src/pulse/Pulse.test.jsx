@@ -239,6 +239,35 @@ it('shows Hevy cardio time, distance and speed instead of reporting no comparabl
   expect(container.querySelector('.og-chart-summary').textContent).toContain('3,6 km')
 })
 
+it('limits exercise chart points and summary to the selected statistics period', async () => {
+  const chartNow = +new Date(2026, 10, 25, 12)
+  vi.spyOn(Date, 'now').mockReturnValue(chartNow)
+  const workouts = [100, 48, 12, 4].map(ago => ({
+    id: `chart-${ago}`,
+    routine_id: 'b',
+    title: 'Treino B',
+    start_time: new Date(chartNow - ago * DAY).toISOString(),
+    exercises,
+  }))
+  await act(async () => root.render(<Pulse previewSnapshot={{ ...snapshot, syncedAt: chartNow, workouts }} />))
+  await click('Estatísticas')
+  const chart = container.querySelector('.og-progress')
+  const period = chart.querySelector('[aria-label="Período da evolução"]')
+  const choosePeriod = async text => act(async () => {
+    [...period.querySelectorAll('button')].find(button => button.textContent === text).click()
+  })
+  expect(period.querySelector('[aria-pressed=true]').textContent).toBe('30 dias')
+  expect(chart.textContent).toContain('2 sessões · toque')
+  await choosePeriod('Semana')
+  expect(chart.querySelector('.og-chart-summary')).toBeNull()
+  expect(chart.textContent).toContain('no período selecionado')
+  await click('Repetições')
+  await choosePeriod('90 dias')
+  expect(chart.textContent).toContain('3 sessões · toque')
+  expect(chart.querySelector('.og-chart-summary strong').textContent).toContain('10 reps')
+  expect(chart.querySelector('[aria-label="Métrica de evolução"] [aria-pressed=true]').textContent).toBe('Repetições')
+})
+
 it('shows the last comparable load from a removed routine on a fresh workout card', async () => {
   const previousWorkout = { ...snapshot.workouts.at(-1), routine_id: 'old-b', title: 'Treino B antigo' }
   localStorage.setItem(STORAGE, JSON.stringify({

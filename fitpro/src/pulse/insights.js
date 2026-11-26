@@ -11,6 +11,7 @@ export function weekStart(value) {
   return d
 }
 export const shiftDay = (value, offset) => { const d = new Date(value); d.setDate(d.getDate() + offset); return d }
+export const statisticsPeriodStart = (now, range) => range === 'week' ? +weekStart(now) : now - Number(range) * DAY
 export const MUSCLE_LABELS = { trapezius: 'Trapézio', deltoids: 'Ombros', 'rear-deltoids': 'Ombro posterior', chest: 'Peitoral', 'upper-back': 'Costas', serratus: 'Serrátil', biceps: 'Bíceps', triceps: 'Tríceps', forearm: 'Antebraços', abs: 'Abdômen', obliques: 'Oblíquos', 'lower-back': 'Lombar', gluteal: 'Glúteos', quadriceps: 'Quadríceps', hamstring: 'Posterior de coxa', adductors: 'Adutores', 'hip-flexors': 'Flexores do quadril', calves: 'Panturrilhas', tibialis: 'Tibial', 'cardiovascular system': 'Cardiovascular' }
 export const MUSCLE_GROUPS = [
   { key: 'chest', label: 'Peito', muscles: ['chest'] },
@@ -116,7 +117,7 @@ export function deriveInsights(snapshot, now = Date.now(), range = 'week', optio
   const eligible = (snapshot?.workouts || []).filter(w => w?.id && Number.isFinite(Date.parse(w.start_time)) && Date.parse(w.start_time) <= now)
   const workouts = dedupeWorkouts(snapshot?.workouts, now)
   const start = weekStart(now)
-  const from = range === 'week' ? +start : now - Number(range) * DAY
+  const from = statisticsPeriodStart(now, range)
   const selected = workouts.filter(w => Date.parse(w.start_time) >= from)
   const weekWorkouts = workouts.filter(w => Date.parse(w.start_time) >= +start)
   const weeks = new Set(workouts.map(w => dayKey(weekStart(w.start_time))))

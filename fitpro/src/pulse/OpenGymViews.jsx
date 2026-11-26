@@ -6,7 +6,7 @@ import LineChart from '../components/LineChart.jsx'
 import { _setLangState } from '../lib/i18n-core.js'
 import { MUSCLE_NAME } from '../lib/body-map-model.js'
 import { DAY, statusText } from './analysis.js'
-import { dayKey, deriveInsights, MUSCLE_GROUPS, MUSCLE_LABELS, shiftDay, targetBand, targetLevels, weekStart } from './insights.js'
+import { dayKey, deriveInsights, MUSCLE_GROUPS, MUSCLE_LABELS, shiftDay, statisticsPeriodStart, targetBand, targetLevels, weekStart } from './insights.js'
 import { metricSummary } from './metricPresentation.js'
 
 // This build is pt-BR only. Shared rendering components use the same translation core as openGym.
@@ -16,6 +16,14 @@ const fmt = n => new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).fo
 const date = n => new Date(n).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
 const title = r => r.title?.match(/^Treino\s+[A-Z]/i)?.[0] || r.title
 const DAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+const STAT_PERIODS = [['week', 'Semana'], ['30', '30 dias'], ['90', '90 dias']]
+const PROGRESS_METRICS = {
+  weight: { unit: 'kg', value: session => session.weight },
+  reps: { unit: 'reps', value: session => session.reps },
+  distance: { unit: 'km', value: session => session.distance / 1000 },
+  duration: { unit: 'min', value: session => session.duration / 60 },
+  speed: { unit: 'km/h', value: session => session.speed },
+}
 const tabs = (items, selected, select, label) => <div className="og-segment" role="group" aria-label={label}>{items.map(([id, name]) => <button key={id} className={selected === id ? 'selected' : ''} aria-pressed={selected === id} onClick={() => select(id)}>{name}</button>)}</div>
 
 export function WeightCard({ insights, api }) {
@@ -74,7 +82,7 @@ function BalanceCard({ api, now }) {
   const rows = MUSCLE_GROUPS.map(group => [group.key, info.muscles.groups[group.key], group.label])
   const contributors = info.muscles.contributors[selected] || []
   const pushPull = info.muscles.pushPull
-  return <section className="card og-balance"><div className="section-head"><h2>Equilíbrio muscular</h2><span>Média semanal</span></div>{tabs([['week', 'Semana'], ['30', '30 dias'], ['90', '90 dias']], range, v => { setRange(v); setSelected(null) }, 'Período do equilíbrio muscular')}
+  return <section className="card og-balance"><div className="section-head"><h2>Equilíbrio muscular</h2><span>Média semanal</span></div>{tabs(STAT_PERIODS, range, v => { setRange(v); setSelected(null) }, 'Período do equilíbrio muscular')}
     {range === 'week' && <div className="month-nav"><button aria-label="Semana muscular anterior" onClick={() => setOffset(n => n - 1)}>‹</button><strong>{offset ? `${date(info.weekStart)} a ${date(end)}` : 'Esta semana'}</strong><button aria-label="Próxima semana muscular" disabled={!offset} onClick={() => setOffset(n => n + 1)}>›</button></div>}
     {tabs([['direct', 'Séries diretas'], ['equivalent', 'Séries equivalentes']], mode, value => { setMode(value); setSelected(null) }, 'Regra de crédito muscular')}
     <p className="og-mode-help">{mode === 'direct' ? 'Somente o músculo primário recebe 1 série.' : 'Músculo primário recebe 1; cada secundário recebe 0,4.'}</p>
@@ -89,8 +97,9 @@ function BalanceCard({ api, now }) {
   </section>
 }
 
-function ProgressCard({ data }) {
+function ProgressCard({ data, now }) {
   const [routineId, setRoutineId] = useState(''), [exerciseId, setExerciseId] = useState(''), [metric, setMetric] = useState('weight')
+  const [range, setRange] = useState('30')
   const routine = data.active.find(r => r.id === routineId) || data.active[0]
   const exercise = routine?.exercises.find(e => e.id === exerciseId) || routine?.exercises[0]
   const cardio = exercise?.latest?.kind === 'cardio'
@@ -98,27 +107,37 @@ function ProgressCard({ data }) {
     ? [[exercise.sessions.some(s => s.distance > 0) && 'distance', 'Distância'], [exercise.sessions.some(s => s.duration > 0) && 'duration', 'Tempo'], [exercise.sessions.some(s => s.speed > 0) && 'speed', 'Velocidade']].filter(([id]) => id)
     : [['weight', 'Carga'], ['reps', 'Repetições']]
   const selectedMetric = options.some(([id]) => id === metric) ? metric : options[0]?.[0]
-  const config = { weight: { unit: 'kg', value: s => s.weight }, reps: { unit: 'reps', value: s => s.reps }, distance: { unit: 'km', value: s => s.distance / 1000 }, duration: { unit: 'min', value: s => s.duration / 60 }, speed: { unit: 'km/h', value: s => s.speed } }[selectedMetric]
-  const points = useMemo(() => config ? (exercise?.sessions || []).filter(s => Number.isFinite(config.value(s)) && config.value(s) > 0).map(s => ({ t: s.at, d: dayKey(s.at), y: config.value(s), note: metricSummary(s) })) : [], [exercise, selectedMetric])
+  const config = PROGRESS_METRICS[selectedMetric]
+  const periodStart = statisticsPeriodStart(now, range)
+  const points = useMemo(() => {
+    if (!config) return []
+    return (exercise?.sessions || []).flatMap(session => {
+      if (session.at < periodStart || session.at > now) return []
+      const value = config.value(session)
+      if (!Number.isFinite(value) || value <= 0) return []
+      return [{ t: session.at, d: dayKey(session.at), y: value, note: metricSummary(session) }]
+    })
+  }, [exercise, config, periodStart, now])
   return <section className="card og-progress"><h2>Evolução por exercício</h2>
+    {tabs(STAT_PERIODS, range, setRange, 'Período da evolução')}
     {tabs(data.active.map(r => [r.id, title(r)]), routine?.id, id => { setRoutineId(id); setExerciseId('') }, 'Rotina da evolução')}
     <div className="og-progress-select"><label>Exercício<select value={exercise?.id || ''} onChange={e => setExerciseId(e.target.value)}>{routine?.exercises.map((e, i) => <option key={`${e.key}-${i}`} value={e.id}>{i + 1}. {e.title}</option>)}</select></label></div>
     {exercise && <h3 className="og-chart-title">{exercise.title}</h3>}
     {options.length > 0 && tabs(options, selectedMetric, setMetric, 'Métrica de evolução')}
-    {points.length ? <><div className="og-chart-summary"><strong>{fmt(points.at(-1).y)} <small>{config.unit}</small></strong><span>Última sessão · {date(points.at(-1).t)}</span></div><LineChart points={points} unit={config.unit} h={190} /><p className="footnote">{date(points[0].t)} a {date(points.at(-1).t)} · {points.length} sessões · toque no gráfico para detalhes</p></> : <p className="muted">Sem sessões comparáveis para este exercício nesta rotina.</p>}
-    {exercise && <p className={`status ${exercise.status}`}>{statusText(exercise)}{!['empty', 'new', 'stale', 'return'].includes(exercise.status) ? ` · ${exercise.streak} sessões sem progresso` : ''}</p>}<p className="footnote">Somente este exercício neste treino. {cardio ? 'Tempo e distância somados; velocidade média calculada a partir deles.' : 'Carga máxima por sessão; repetições somadas das séries normais.'}</p>
+    {points.length ? <><div className="og-chart-summary"><strong>{fmt(points.at(-1).y)} <small>{config.unit}</small></strong><span>Última sessão no período · {date(points.at(-1).t)}</span></div><LineChart points={points} unit={config.unit} h={190} /><p className="footnote">{date(periodStart)} a {date(now)} · {points.length} {points.length === 1 ? 'sessão' : 'sessões'} · toque no gráfico para detalhes</p></> : <p className="muted">Sem dados para este exercício e métrica no período selecionado.</p>}
+    {exercise && <p className={`status ${exercise.status}`}>Status atual · {statusText(exercise)}{!['empty', 'new', 'stale', 'return'].includes(exercise.status) ? ` · ${exercise.streak} sessões sem progresso` : ''}</p>}<p className="footnote">Somente este exercício neste treino. {cardio ? 'Tempo e distância somados; velocidade média calculada a partir deles.' : 'Carga máxima por sessão; repetições somadas das séries normais.'}</p>
   </section>
 }
 
 function TrainingTime({ api, now }) {
   const [range, setRange] = useState('week')
   const info = useMemo(() => deriveInsights(api.snapshot, now, range), [api.snapshot, now, range])
-  return <section className="card training-time"><h2>Tempo de treino</h2>{tabs([['week', 'Semana'], ['30', '30 dias'], ['90', '90 dias']], range, setRange, 'Período do tempo de treino')}<div className="time-metrics"><div><small>Total</small><strong>{info.timedCount ? formatDuration(info.minutes) : '—'}</strong></div><div><small>Média por sessão</small><strong>{formatDuration(info.averageMinutes)}</strong></div></div><p className="footnote">{info.timedCount} de {info.selected.length} sessões com duração. Tempo entre início e fim registrados na Hevy, incluindo descansos.</p></section>
+  return <section className="card training-time"><h2>Tempo de treino</h2>{tabs(STAT_PERIODS, range, setRange, 'Período do tempo de treino')}<div className="time-metrics"><div><small>Total</small><strong>{info.timedCount ? formatDuration(info.minutes) : '—'}</strong></div><div><small>Média por sessão</small><strong>{formatDuration(info.averageMinutes)}</strong></div></div><p className="footnote">{info.timedCount} de {info.selected.length} sessões com duração. Tempo entre início e fim registrados na Hevy, incluindo descansos.</p></section>
 }
 
 export function OpenGymStats({ api, data, now, go, openRoutine }) {
   const insights = useMemo(() => deriveInsights(api.snapshot, now), [api.snapshot, now])
   return <><section className="og-stat-grid"><div><small>Treinos</small><strong>{insights.workouts.length}</strong><span>Todo o histórico</span></div><div><small>Neste mês</small><strong>{insights.monthCount}</strong><span>{new Date(now).toLocaleDateString('pt-BR', { month: 'long' })}</span></div><div><small>Sequência semanal</small><strong>{insights.streak}</strong><span>Semanas com treino</span></div><div><small>Peso · 30 dias</small><strong>{insights.weightDelta == null ? '—' : `${insights.weightDelta > 0 ? '+' : ''}${fmt(insights.weightDelta)} kg`}</strong><span>{insights.weightDelta == null ? 'Sem medições suficientes' : 'Entre primeira e última medição'}</span></div></section>
-    <div className="og-stats-grid"><div className="og-column"><ActivityCard workouts={insights.workouts} now={now} /><BalanceCard api={api} now={now} /></div><div className="og-column"><TrainingTime api={api} now={now} /><ProgressCard data={data} /><section className="card og-plateaus"><div className="section-head"><h2>Estagnação por treino</h2><span>{data.alerts.length} em atenção</span></div>{data.active.map(r => <button className="og-plateau-row" key={r.id} onClick={() => openRoutine(r.id)}><strong>{title(r)}</strong><span className={r.alerts ? 'amber' : 'muted'}>{r.alerts ? `${r.alerts} em atenção` : 'Sem alertas recentes'}</span><span aria-hidden="true">→</span></button>)}<p className="footnote">Rotinas ativas · sessões nos últimos 30 dias.</p><button className="og-choice" onClick={() => go('alerts')}>Ver todos os alertas →</button></section></div></div>
+    <div className="og-stats-grid"><div className="og-column"><ActivityCard workouts={insights.workouts} now={now} /><BalanceCard api={api} now={now} /></div><div className="og-column"><TrainingTime api={api} now={now} /><ProgressCard data={data} now={now} /><section className="card og-plateaus"><div className="section-head"><h2>Estagnação por treino</h2><span>{data.alerts.length} em atenção</span></div>{data.active.map(r => <button className="og-plateau-row" key={r.id} onClick={() => openRoutine(r.id)}><strong>{title(r)}</strong><span className={r.alerts ? 'amber' : 'muted'}>{r.alerts ? `${r.alerts} em atenção` : 'Sem alertas recentes'}</span><span aria-hidden="true">→</span></button>)}<p className="footnote">Rotinas ativas · sessões nos últimos 30 dias.</p><button className="og-choice" onClick={() => go('alerts')}>Ver todos os alertas →</button></section></div></div>
   </>
 }
