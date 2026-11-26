@@ -10,6 +10,8 @@ export default function ProgressStatus({ item }) {
   const latest = item.latest
   const performance = latest ?? item.reference
   const comparable = !['empty', 'new', 'stale', 'return'].includes(item.status)
+  const awaitingComparison = item.status === 'empty' || item.status === 'new'
+  const meterLabel = awaitingComparison ? 'Aguardando a primeira comparação nesta rotina' : `${item.streak} sessões seguidas sem progresso`
   const cardio = performance?.kind === 'cardio'
   const uniform = !cardio && performance?.setDetails.length && performance.setDetails.every(s => s.weight === performance.setDetails[0].weight && s.reps === performance.setDetails[0].reps)
   const cardioChange = latest?.kind === 'cardio' && previous?.kind === 'cardio' ? cardioComparison(latest, previous) : null
@@ -31,10 +33,13 @@ export default function ProgressStatus({ item }) {
       {cardioChange?.secondary && <small>{cardioChange.secondary}</small>}
       {!cardio && latest.volume !== previous.volume && <small className={latest.volume < previous.volume ? 'mixed-progress' : ''}>Volume {delta(latest.volume - previous.volume)} kg{latest.volume < previous.volume ? ` (${format(previous.volume)} para ${format(latest.volume)} kg)` : ''}</small>}
     </p>}
-    {comparable && <div className="stagnation-meter" role="img" aria-label={`${item.streak} sessões seguidas sem progresso. Atenção em 3, persistente em 6.`}>
-      <div className="stagnation-meter-head"><strong>{statusText(item)}</strong><span><b>{item.streak}</b> sem progresso</span></div>
-      <div className="stagnation-meter-bars" aria-hidden="true">{Array.from({ length: 6 }, (_, index) => <i key={index} className={index < item.streak ? 'filled' : ''} />)}</div>
-      <div className="stagnation-meter-scale" aria-hidden="true"><span>0 · evoluiu</span><span>3 · atenção</span><span>6 · persistente</span></div>
+    {(comparable || awaitingComparison) && <div className="stagnation-meter" role="img" aria-label={`${meterLabel}. Atenção em 3, persistente em 6.`}>
+      <div className="stagnation-meter-head">
+        <strong>{awaitingComparison ? 'Aguardando comparação' : statusText(item)}</strong>
+        <span>{awaitingComparison ? <><b>0</b> comparações</> : <><b>{item.streak}</b> sem progresso</>}</span>
+      </div>
+      <div className="stagnation-meter-bars" aria-hidden="true">{Array.from({ length: 6 }, (_, index) => <i key={index} className={comparable && index < item.streak ? 'filled' : ''} />)}</div>
+      <div className="stagnation-meter-scale" aria-hidden="true"><span>0 · {awaitingComparison ? 'início' : 'evoluiu'}</span><span>3 · atenção</span><span>6 · persistente</span></div>
     </div>}
     <div className="progress-advice"><small>FOCO PARA HOJE</small><p>{recommendation}</p></div>
   </section>

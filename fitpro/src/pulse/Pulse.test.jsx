@@ -254,7 +254,12 @@ it('shows the last comparable load from a removed routine on a fresh workout car
   expect(exercise.querySelector('.exercise-last').textContent).toContain('100 kg')
   await act(async () => { exercise.open = true; exercise.dispatchEvent(new Event('toggle')) })
   expect(exercise.querySelector('.performance-value').textContent).toContain('1 × 10')
-  expect(exercise.querySelector('.stagnation-meter')).toBeNull()
+  const meter = exercise.querySelector('.stagnation-meter')
+  expect(meter.textContent).toContain('Aguardando comparação')
+  expect(meter.textContent).toContain('0 comparações')
+  expect(meter.textContent).toContain('3 · atenção')
+  expect(meter.textContent).toContain('6 · persistente')
+  expect(meter.querySelectorAll('.stagnation-meter-bars .filled')).toHaveLength(0)
   expect(exercise.querySelector('.exercise-extra').textContent).toContain('100 kg máx. · 1 séries · 10 reps totais')
 })
 

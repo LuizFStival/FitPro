@@ -28,7 +28,7 @@
 .progress-change > span { color: #9cab9f; font-size: .73rem; }
 .progress-change > small { flex-basis: 100%; color: #9cab9f; font-size: .73rem; }
 .stagnation-meter { margin: 14px 0; padding: 12px; border: 1px solid #344039; border-radius: 12px; background: #111713; }
-.stagnation-meter-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; color: var(--progress-accent); font-size: .76rem; }
+.stagnation-meter-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 10px; color: var(--progress-accent); font-size: .76rem; }
 .stagnation-meter-head > span { white-space: nowrap; }
 .stagnation-meter-head b { font-size: 1.15rem; }
 .stagnation-meter-bars { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; margin: 10px 0 6px; }
