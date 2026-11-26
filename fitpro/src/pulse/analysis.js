@@ -1,5 +1,5 @@
 // Read-only Hevy analysis. Identity is routine + template, never a translated name.
-import { portugueseExerciseName, executionGuide } from './exercisePresentation.js'
+import { exerciseDisplayName, executionGuide } from './exercisePresentation.js'
 import { dedupeWorkouts } from './workoutDedup.js'
 import { equivalentIdsFor } from './equivalence.js'
 export const DAY = 86400000
@@ -111,13 +111,11 @@ export function analyze(snapshot, preferences = {}, now = Date.now()) {
       const age = latest ? Math.floor((now - latest.at) / DAY) : null
       const status = !latest ? 'empty' : age > 30 ? 'stale' : latest.trend === 'return' ? 'return' : sessions.length < 2 ? 'new' : streak >= 6 ? 'critical' : streak >= 3 ? 'warning' : latest.trend === 'up' ? 'up' : 'ok'
       const apiTitle = exercise.title || template?.title
-      const displayTitle = preferences.names?.[id] || apiTitle
       const equivalentTitles = [...equivalentIds].filter(otherId => otherId !== id).map(otherId => {
         const otherTemplate = templates.get(otherId)
-        const otherTitle = preferences.names?.[otherId] || otherTemplate?.title || otherId
-        return otherTemplate?.is_custom ? otherTitle : portugueseExerciseName(otherTitle)
+        return exerciseDisplayName(otherTemplate?.title || otherId, otherTemplate, preferences.names?.[otherId])
       })
-      return { key, id, title: template?.is_custom ? displayTitle || 'Exercício sem nome' : portugueseExerciseName(displayTitle), apiTitle,
+      return { key, id, title: exerciseDisplayName(apiTitle, template, preferences.names?.[id]), apiTitle,
         guide: executionGuide(apiTitle, template?.title, template?.is_custom === true),
         order: exercise.index ?? exercise.position, routineId: routine.id, routineTitle: routine.title, sessions, latest, streak, status, age, equivalentIds: [...equivalentIds], equivalentTitles,
         referenceSessions, reference: referenceSessions.at(-1),

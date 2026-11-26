@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { ordered, routineFor } from './analysis.js'
 import { equivalentIdsFor, setEquivalenceGroup } from './equivalence.js'
-import { portugueseExerciseName } from './exercisePresentation.js'
+import { exerciseDisplayName } from './exercisePresentation.js'
 import { MUSCLE_LABELS, muscleWeights } from './insights.js'
 
 const normalized = value => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR')
@@ -30,7 +30,7 @@ export function equivalenceCandidates(snapshot, routine, item, preferences = {})
     const candidatePrimary = Object.keys(muscleWeights(templates.get(candidate.id)))[0]
     return primary && candidatePrimary === primary && candidate.order === item.order
   }).map(candidate => ({ ...candidate,
-    title: preferences.names?.[candidate.id] || portugueseExerciseName(candidate.title),
+    title: exerciseDisplayName(candidate.title, templates.get(candidate.id), preferences.names?.[candidate.id]),
     muscle: MUSCLE_LABELS[Object.keys(muscleWeights(templates.get(candidate.id)))[0]] || 'Grupo não identificado',
   })).sort((a, b) => a.title.localeCompare(b.title, 'pt-BR'))
 }

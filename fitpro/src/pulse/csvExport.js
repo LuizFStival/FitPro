@@ -1,5 +1,5 @@
 import { ordered, routineFor } from './analysis.js'
-import { portugueseExerciseName } from './exercisePresentation.js'
+import { exerciseDisplayName } from './exercisePresentation.js'
 import { durationMinutes } from './workoutMetrics.js'
 import { dedupeWorkouts } from './workoutDedup.js'
 
@@ -67,7 +67,7 @@ export function exportRows(snapshot, data, preferences, range, now = Date.now())
         const analysis = analyzed?.exercises.find(item => item.id === id)
         const session = analysis?.sessions.find(item => item.id === workout.id)
         const apiTitle = exercise.title || template?.title || 'Exercício sem nome'
-        const displayName = preferences?.names?.[id] || (template?.is_custom ? apiTitle : portugueseExerciseName(apiTitle))
+        const displayName = exerciseDisplayName(apiTitle, template, preferences?.names?.[id])
         return ordered(exercise.sets).map((set, setIndex) => ({
           data_inicio: workout.start_time || '', data_fim: workout.end_time || '', duracao_treino_min: workoutMinutes || '', treino_id: workout.id || '',
           rotina_id: routine?.id || workout.routine_id || '', rotina_nome: routine?.title || workout.title || 'Sem rotina identificada',

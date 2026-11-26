@@ -2,7 +2,9 @@
 const normalize = value => String(value || '').normalize('NFKC').trim().toLocaleLowerCase('pt-BR').replace(/\s+/g, ' ')
 const exact = {
   'Seated Calf Raise': 'Panturrilha Sentado (Máquina)',
+  'Elevação de Panturrilha Sentado (Máquina)': 'Panturrilha Sentado (Máquina)',
   'Crunch (Machine)': 'Abdominal (Máquina)',
+  'Abdominal na Máquina': 'Abdominal (Máquina)',
   'Chest Press (Machine)': 'Supino Sentado (Máquina)',
   'Leg Press (Machine)': 'Leg Press 45° (Máquina)',
   'Leg Press Horizontal (Machine)': 'Leg Press Horizontal (Máquina)',
@@ -14,18 +16,32 @@ const exact = {
   'EZ Bar Bicep Curl': 'Rosca Direta (Barra W)',
   'Triceps Rope Pushdown': 'Tríceps na Polia com Corda',
   'Seated Cable Row - V Grip (Cable)': 'Remada Sentada com Pegada em V (Cabo)',
-  'Bench Press - Wide Grip (Barbell)': 'Supino com Pegada Aberta (Barra)',
+  'Bench Press - Wide Grip (Barbell)': 'Supino Aberto (Barra)',
+  'Supino com Pegada Aberta (Barra)': 'Supino Aberto (Barra)',
+  'Supino - Pegada Aberta (Barra)': 'Supino Aberto (Barra)',
   'Bench Press - Close Grip (Barbell)': 'Supino com Pegada Fechada (Barra)',
+  'Seated Shoulder Press (Machine)': 'Desenvolvimento de Ombros Sentado (Máquina)',
+  'Seated Dip Machine': 'Mergulho Sentado (Máquina)',
+  'Seated Dip (Machine)': 'Mergulho Sentado (Máquina)',
   'Back Extension (Hyperextension)': 'Extensão Lombar (Hiperextensão)',
   'Back Extension (Weighted Hyperextension)': 'Extensão Lombar (Hiperextensão com Peso)',
   'Shoulder Press (Plate Loaded)': 'Desenvolvimento de Ombros (Máquina de Placas)',
   'Squat (Smith Machine)': 'Agachamento no Smith (Máquina)',
   'Butterfly (Pec Deck)': 'Crucifixo (Máquina)',
+  'Crucifixo no Voador (Máquina)': 'Crucifixo (Máquina)',
   'Cable Crunch': 'Abdominal (Cabo)',
   'Cable Fly Crossovers': 'Crucifixo na Polia',
   'Hammer Curl': 'Rosca Martelo (Halter)',
   'Preacher Curl (EZ Bar)': 'Rosca Scott (Barra W)',
   'Standing Calf Raise (Machine)': 'Panturrilha em Pé (Máquina)',
+  'Elevação de Panturrilha em Pé (Máquina)': 'Panturrilha em Pé (Máquina)',
+  'Iso-Lateral High Row (Machine)': 'Remada Alta Iso-Lateral (Máquina)',
+  'Dumbbell Row': 'Remada Serrote (Halter)',
+  'Single Arm Dumbbell Row': 'Remada Serrote (Halter)',
+  'Single Arm Row (Dumbbell)': 'Remada Serrote (Halter)',
+  'Lat Pulldown - Close Grip (Cable)': 'Puxada Alta - Pegada Fechada (Cabo)',
+  'Rear Delt Reverse Fly (Machine)': 'Crucifixo Invertido (Máquina)',
+  'Seated Incline Curl (Dumbbell)': 'Rosca Inclinada Sentado (Halter)',
 }
 const movements = {
   'Bench Press': 'Supino Reto', 'Incline Bench Press': 'Supino Inclinado', 'Decline Bench Press': 'Supino Declinado',
@@ -74,6 +90,11 @@ export function portugueseExerciseName(value) {
   return movement && tool ? `${movement} (${tool})` : original || 'Exercício sem nome'
 }
 
+export function exerciseDisplayName(apiTitle, template, alias) {
+  const title = alias || apiTitle || template?.title
+  return template?.is_custom ? title || 'Exercício sem nome' : portugueseExerciseName(title)
+}
+
 const twin = 'https://www.leandrotwin.com.br/assessoria/arquivos/lista-de-videos-de-exercicios.pdf'
 const pg = 'https://www.puregym.com/lets-get-started/workout-builder/equipment-how-tos/'
 // Explicit variant matches only; sources link to the publisher, videos stay on YouTube.
@@ -82,7 +103,7 @@ export const EXECUTION_GUIDES = [
   { names: ['Chest Press (Machine)', 'Supino Sentado (Máquina)'], video: 'sqNwDkUU_Ps', author: 'PureGym', source: pg, language: 'Inglês', label: 'Supino sentado na máquina' },
   { names: ['Incline Bench Press (Dumbbell)', 'Supino Inclinado (Halter)'], video: 'WP1VLAt8hbM', label: 'Supino inclinado · aula com variações', author: 'Leandro Twin', source: twin },
   { names: ['Bench Press (Barbell)', 'Bench Press (Dumbbell)', 'Bench Press (Smith Machine)'], video: 'EZMYCLKuGow', label: 'Supino reto · aula com variações', author: 'Leandro Twin', source: twin },
-  { names: ['Bench Press - Wide Grip (Barbell)', 'Supino com Pegada Aberta (Barra)', 'Supino - Pegada Aberta (Barra)'], video: 'EZMYCLKuGow', label: 'Supino reto · orientação geral', note: 'Este treino usa pegada aberta. A aula é geral sobre supino reto; confira a pegada indicada na sua rotina.', author: 'Leandro Twin', source: twin },
+  { names: ['Bench Press - Wide Grip (Barbell)', 'Supino Aberto (Barra)', 'Supino com Pegada Aberta (Barra)', 'Supino - Pegada Aberta (Barra)'], video: 'EZMYCLKuGow', label: 'Supino reto · orientação geral', note: 'Este treino usa pegada aberta. A aula é geral sobre supino reto; confira a pegada indicada na sua rotina.', author: 'Leandro Twin', source: twin },
   { names: ['Chest Fly (Machine)', 'Butterfly (Pec Deck)', 'Crucifixo (Máquina)', 'Crucifixo no Voador (Máquina)'], video: 'FzCnfD0gOXo', label: 'Crucifixo na máquina', author: 'Leandro Twin', source: twin },
   { names: ['Leg Press (Machine)', 'Leg Press 45° (Máquina)'], video: 'nY8UsiAqwds', label: 'Leg press', author: 'Leandro Twin', source: twin },
   { names: ['Leg Extension (Machine)', 'Cadeira Extensora (Máquina)'], video: 'el3oHblB5DM', label: 'Cadeira extensora', author: 'Leandro Twin', source: twin },

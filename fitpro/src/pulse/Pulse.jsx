@@ -99,7 +99,16 @@ export default function Pulse({ previewSnapshot = null }) {
       {!api.snapshot && tab !== 'settings' ? <Connection api={api} /> : tab === 'home' ? <OpenGymHome {...{ api, data, now, openRoutine, go }} />
         : tab === 'stats' ? <OpenGymStats {...{ api, data, now, go, openRoutine }} /> : tab === 'workout' ? <>
         <RoutinePicker routines={data.active} selected={routine?.id} snapshot={api.snapshot} onSelect={id => { setExpanded(null); setRoutineId(id) }} />
-        {routine ? <><div className="workout-heading"><div><h2>{shortTitle(routine.title)}</h2><p>Próxima sessão #{routine.nextSession} · {routine.exercises.length} exercícios</p></div><span className="pill">{routine.alerts} em atenção</span></div><p className="workout-hint">Na ordem da Hevy · toque no exercício que está fazendo.</p>{routine.exercises.map((e, i) => <Exercise key={`${e.key}-${i}`} item={e} expanded={expanded} setExpanded={setExpanded} configureEquivalent={configureEquivalent} />)}<details key={routine.id} className="routine-history"><summary>Treinos passados <span>{routineWorkouts.length} sessões · última duração {formatDuration(durationMinutes(routineWorkouts[0], now))}</span></summary><WorkoutHistory routine={routine} workouts={routineWorkouts} now={now} names={api.preferences.names} /></details><p className="footnote">Registre as séries na Hevy. Depois de finalizar, volte aqui para atualizar sua evolução.</p></> : <p className="empty">Nenhuma rotina ativa. Escolha as atuais em Configurações.</p>}
+        {routine ? <>
+          <div className="workout-heading"><div><h2>{shortTitle(routine.title)}</h2><p>Próxima sessão #{routine.nextSession} · {routine.exercises.length} exercícios</p></div><span className="pill">{routine.alerts} em atenção</span></div>
+          <p className="workout-hint">Na ordem da Hevy · toque no exercício que está fazendo.</p>
+          {routine.exercises.map((e, i) => <Exercise key={`${e.key}-${i}`} item={e} expanded={expanded} setExpanded={setExpanded} configureEquivalent={configureEquivalent} />)}
+          <details key={routine.id} className="routine-history">
+            <summary>Treinos passados <span>{routineWorkouts.length} sessões · última duração {formatDuration(durationMinutes(routineWorkouts[0], now))}</span></summary>
+            <WorkoutHistory routine={routine} workouts={routineWorkouts} now={now} names={api.preferences.names} templates={api.snapshot.templates} />
+          </details>
+          <p className="footnote">Registre as séries na Hevy. Depois de finalizar, volte aqui para atualizar sua evolução.</p>
+        </> : <p className="empty">Nenhuma rotina ativa. Escolha as atuais em Configurações.</p>}
       </> : tab === 'alerts' ? <>
         <div className="card"><h2>Estagnação por treino</h2><p>3 a 5 sessões sem progresso: atenção. 6 ou mais: estagnação persistente. Aumento de carga, repetições na mesma carga ou volume reinicia a contagem.</p><p className="muted">Somente exercícios das rotinas ativas com sessão nos últimos 30 dias. Retornos após pausa ficam neutros.</p></div>
         {data.alerts.length ? data.alerts.map(e => <section key={e.key}><h3>{e.routineTitle}</h3><Exercise item={e} expanded={expanded} setExpanded={setExpanded} /></section>) : <div className="empty"><span className="green">✓</span><h2>Sem alertas recentes</h2><p>Consulte cada treino para ver o histórico e exercícios sem dados suficientes.</p></div>}
