@@ -19,5 +19,5 @@ export function makePreview() {
   })).filter(w => Date.parse(w.end_time) <= now)
   const bodyMeasurements = Array.from({ length: 13 }, (_, n) => ({ date: dayKey(shiftDay(new Date(now), (n - 12) * 4)), weight_kg: Math.round((80.5 - n * 0.18 + (n % 3) * 0.1) * 10) / 10 }))
   return { routines, workouts, templates, bodyMeasurements, syncedAt: now, templatesAt: now, measurementsAt: now,
-    previewPreferences: { weekPlan: { 1: { routineId: 'demo-0', time: '07:00' }, 3: { routineId: 'demo-1', time: '07:00' }, 5: { routineId: 'demo-2', time: '07:00' } } } }
+    previewPreferences: {} }
 }

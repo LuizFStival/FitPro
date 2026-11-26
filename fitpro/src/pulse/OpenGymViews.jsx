@@ -6,7 +6,7 @@ import LineChart from '../components/LineChart.jsx'
 import { _setLangState } from '../lib/i18n-core.js'
 import { MUSCLE_NAME } from '../lib/body-map-model.js'
 import { DAY, statusText } from './analysis.js'
-import { dayKey, deriveInsights, MUSCLE_GROUPS, MUSCLE_LABELS, routineMuscles, shiftDay, targetBand, targetLevels, weekStart } from './insights.js'
+import { dayKey, deriveInsights, MUSCLE_GROUPS, MUSCLE_LABELS, shiftDay, targetBand, targetLevels, weekStart } from './insights.js'
 import { metricSummary } from './metricPresentation.js'
 
 // This build is pt-BR only. Shared rendering components use the same translation core as openGym.
@@ -31,38 +31,27 @@ export function WeightCard({ insights, api }) {
   </section>
 }
 
-function WeekCard({ data, api, insights, now, openRoutine, go }) {
+function WeekCard({ insights, now, go }) {
   const [offset, setOffset] = useState(0)
   const [selectedDay, setSelectedDay] = useState(dayKey(now))
   const start = shiftDay(weekStart(now), offset * 7)
   const days = Array.from({ length: 7 }, (_, i) => shiftDay(start, i))
   const logged = insights.workouts.filter(w => dayKey(w.start_time) === selectedDay)
-  const weekday = new Date(selectedDay + 'T12:00:00').getDay()
-  const planned = api.preferences.weekPlan?.[weekday]
-  const routine = data.active.find(r => r.id === planned?.routineId)
   const move = n => { const next = offset + n; setOffset(next); setSelectedDay(dayKey(shiftDay(weekStart(now), next * 7))) }
   return <section className="card og-week-card"><div className="month-nav"><button aria-label="Semana anterior" onClick={() => move(-1)}>‹</button><strong>{offset === 0 ? 'Esta semana' : `${date(start)} a ${date(shiftDay(start, 6))}`}</strong><button aria-label="Próxima semana" onClick={() => move(1)}>›</button></div>
-    <div className="og-week">{days.map((d, i) => { const key = dayKey(d); const done = insights.workouts.some(w => dayKey(w.start_time) === key); const plan = api.preferences.weekPlan?.[d.getDay()]; return <button key={key} className={key === selectedDay ? 'selected' : ''} aria-pressed={key === selectedDay} aria-label={`${DAYS[i]}, ${date(d)}${done ? ', treino realizado' : ''}`} onClick={() => setSelectedDay(key)}><small>{DAYS[i]}</small><b>{d.getDate()}</b><i className={done ? 'done' : data.active.some(r => r.id === plan?.routineId) ? 'planned' : ''} /></button> })}</div>
-    <div className="og-day-result"><span className="og-day-icon">{logged.length ? '✓' : '▦'}</span><div><small>{selectedDay === dayKey(now) ? 'HOJE' : date(selectedDay + 'T12:00:00')}</small><strong>{logged.length ? logged.map(w => w.title).join(' + ') : routine ? routine.title : 'Dia sem treino agendado'}</strong><span>{logged.length ? 'Registrado na Hevy' : routine ? `${planned.time || 'Sem horário definido'} · agenda deste aparelho` : 'Organize seus dias em Plano'}</span></div>{routine && <button className="og-link" onClick={() => openRoutine(routine.id)}>Ver</button>}</div>
-    <button className="og-choice" onClick={() => go('plan')}>Escolher um treino ou organizar a semana →</button>
+    <div className="og-week">{days.map((d, i) => { const key = dayKey(d); const done = insights.workouts.some(w => dayKey(w.start_time) === key); return <button key={key} className={key === selectedDay ? 'selected' : ''} aria-pressed={key === selectedDay} aria-label={`${DAYS[i]}, ${date(d)}${done ? ', treino realizado' : ''}`} onClick={() => setSelectedDay(key)}><small>{DAYS[i]}</small><b>{d.getDate()}</b><i className={done ? 'done' : ''} /></button> })}</div>
+    <div className="og-day-result"><span className="og-day-icon">{logged.length ? '✓' : '▦'}</span><div><small>{selectedDay === dayKey(now) ? 'HOJE' : date(selectedDay + 'T12:00:00')}</small><strong>{logged.length ? logged.map(w => w.title).join(' + ') : 'Dia sem treino registrado'}</strong><span>{logged.length ? 'Registrado na Hevy' : 'Escolha uma rotina em Treinos'}</span></div></div>
+    <button className="og-choice" onClick={() => go('workout')}>Escolher um treino →</button>
   </section>
 }
 
 export function OpenGymHome({ api, data, now, openRoutine, go }) {
   const insights = useMemo(() => deriveInsights(api.snapshot, now), [api.snapshot, now])
-  return <div className="og-home-grid"><div className="og-column"><WeekCard {...{ api, data, insights, now, openRoutine, go }} /><WeightCard {...{ insights, api }} /></div>
+  return <div className="og-home-grid"><div className="og-column"><WeekCard {...{ insights, now, go }} /><WeightCard {...{ insights, api }} /></div>
     <div className="og-column"><section className="card og-streak"><div className="section-head"><h2>Sua constância</h2><span>↗</span></div><div className="og-streak-head"><b>{insights.streak}</b><div><strong>semanas seguidas</strong><span>com pelo menos um treino</span></div></div><div className="og-streak-meta"><span><b>{insights.weekWorkouts.length}</b> esta semana</span><span><b>{insights.monthCount}</b> neste mês</span><span><b>{fmt(data.frequency)}</b>/sem · 30 dias</span></div><button className="og-choice" onClick={() => go('stats')}>Explorar estatísticas →</button></section>
       <section className="card"><div className="section-head"><h2>Equilíbrio da semana</h2><button className="text" onClick={() => go('stats')}>Detalhes</button></div><BodyMap load={insights.muscles.bodyLoad} levels={targetLevels(insights.muscles.bodyLoad)} className="og-home-body target-map" /><p className="muted">{insights.muscles.totalSets ? `${insights.muscles.knownSets} de ${insights.muscles.totalSets} séries diretas com grupo muscular identificado.` : 'Sem séries registradas nesta semana. Veja outros períodos nas estatísticas.'}</p></section>
       <section className="card"><div className="section-head"><h2>Antes de treinar</h2><span className="pill">{data.alerts.length} em atenção</span></div>{data.alerts.length ? data.alerts.slice(0, 2).map(e => <button className="alert-link" key={e.key} onClick={() => openRoutine(e.routineId)}><strong>{e.title}</strong><span>{e.routineTitle} · {e.streak} sessões sem progresso →</span></button>) : <p className="muted">Sem estagnação recente nos exercícios ativos. Abra sua rotina para acompanhar a evolução.</p>}<button className="og-choice" onClick={() => go('alerts')}>Ver estagnação por treino →</button></section>
     </div></div>
-}
-
-export function OpenGymPlan({ api, data, openRoutine }) {
-  const [view, setView] = useState('routines')
-  const updateDay = (day, field, value) => api.setPreferences(p => ({ ...p, weekPlan: { ...p.weekPlan, [day]: { ...p.weekPlan?.[day], [field]: value } } }))
-  return <>{tabs([['routines', 'Rotinas'], ['schedule', 'Agenda semanal']], view, setView, 'Plano de treino')}
-    {view === 'schedule' ? <section className="card"><h2>Como sua semana se organiza</h2><p className="muted">Agenda pessoal neste aparelho. As rotinas vêm da Hevy; dias e horários não são enviados para lá.</p><div className="og-schedule">{[1, 2, 3, 4, 5, 6, 0].map((day, i) => { const p = api.preferences.weekPlan?.[day] || {}; return <div className="og-schedule-row" key={day}><strong>{DAYS[i]}</strong><select aria-label={`Treino de ${DAYS[i]}`} value={data.active.some(r => r.id === p.routineId) ? p.routineId : ''} onChange={e => updateDay(day, 'routineId', e.target.value)}><option value="">Descanso / sem agenda</option>{data.active.map(r => <option value={r.id} key={r.id}>{r.title}</option>)}</select><input type="time" aria-label={`Horário de ${DAYS[i]}`} value={p.time || ''} onChange={e => updateDay(day, 'time', e.target.value)} /></div> })}</div></section> : <><p className="muted">Suas rotinas ativas em ordem alfabética (A, B, C). Abra uma para ver os exercícios e a evolução.</p><div className="og-routines">{data.active.map(r => <button key={r.id} className="card og-routine" onClick={() => openRoutine(r.id)}><div className="og-routine-line"><span className="og-routine-symbol">{title(r).replace('Treino ', '')}</span><div><strong>{r.title}</strong><small>{r.exercises.length} exercícios · próxima sessão #{r.nextSession}</small></div><span aria-hidden="true">›</span></div><div className="og-routine-bottom"><BodyMap load={routineMuscles(api.snapshot.routines.find(raw => raw.id === r.id), api.snapshot.templates)} className="bm-mini" /><div><span className="green">{r.evolved} evoluíram</span><span className={r.alerts ? 'amber' : 'muted'}>{r.alerts} em atenção</span></div><small>Último treino<br />{r.lastAt ? date(r.lastAt) : 'Sem sessão'}</small></div></button>)}</div>{!data.active.length && <p className="empty">Ative suas rotinas em Configurações.</p>}</>}
-  </>
 }
 
 export function ActivityCard({ workouts, now }) {

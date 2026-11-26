@@ -76,6 +76,47 @@ describe('per-routine plateau', () => {
     expect(data.routines[1].exercises[0].status).toBe('new')
     expect(data.routines[0].exercises[0].latest.weight).toBe(40)
   })
+  it('finds references from hidden and removed routines by template ID without affecting the new routine', () => {
+    const routines = [routine('new', 'Treino A'), routine('hidden', 'Treino B (Iniciante)')]
+    const hidden = { ...workout('hidden-1', 10, 50, 10, 'hidden'), title: 'Treino B (Iniciante)' }
+    const removed = { ...workout('removed-1', 8, 55, 12, 'deleted'), title: 'Treino A' }
+    const otherTemplate = { ...workout('other', 7, 100, 20, 'deleted'), exercises: [exercise('different-id', 100, 20)] }
+    const warmup = { ...workout('warmup', 6, 30, 10, 'new'), exercises: [{ ...exercise(), sets: [{ type: 'warmup', weight_kg: 30, reps: 10 }] }] }
+    const workouts = [hidden, removed, otherTemplate, warmup]
+    const before = run(workouts, {}, routines)
+    const item = before.active[0].exercises[0]
+    expect(item).toMatchObject({ status: 'empty', streak: 0, nextSession: 1, sessions: [] })
+    expect(item.reference).toMatchObject({ weight: 55, reps: 12, sets: 1, sourceTitle: 'Treino A' })
+    expect(item.referenceSessions.map(session => session.id)).toEqual(['hidden-1', 'removed-1'])
+    expect(before.alerts).toEqual([])
+
+    const first = workout('first', 4, 40, 10, 'new')
+    const laterOutside = workout('later-outside', 3, 100, 20, 'hidden')
+    const after = run([...workouts, first, laterOutside], {}, routines).active[0].exercises[0]
+    expect(after).toMatchObject({ status: 'new', streak: 0, nextSession: 2, latest: { id: 'first', weight: 40 } })
+    expect(after.reference.id).toBe('removed-1')
+  })
+  it('combines equivalent variations inside one routine without leaking into another routine', () => {
+    const machine = { exercise_template_id: 'machine', title: 'Supino Sentado (Máquina)', index: 0, sets: [{ type: 'normal', weight_kg: 40, reps: 10 }] }
+    const barbell = { exercise_template_id: 'barbell', title: 'Supino com Barra', index: 0, sets: [{ type: 'normal', weight_kg: 45, reps: 10 }] }
+    const routines = [{ id: 'a', title: 'Treino A', exercises: [machine] }, { id: 'b', title: 'Treino B', exercises: [barbell] }]
+    const sessions = [
+      { id: 'a1', routine_id: 'a', title: 'Treino A', start_time: new Date(now - 7 * DAY).toISOString(), exercises: [machine] },
+      { id: 'a2', routine_id: 'a', title: 'Treino A', start_time: new Date(now - DAY).toISOString(), exercises: [barbell] },
+      { id: 'b1', routine_id: 'b', title: 'Treino B', start_time: new Date(now - DAY).toISOString(), exercises: [{ ...barbell, sets: [{ type: 'normal', weight_kg: 100, reps: 20 }] }] },
+    ]
+    const preferences = { equivalenceGroups: [{ routineId: 'a', exerciseIds: ['machine', 'barbell'] }] }
+    const result = analyze({ routines, workouts: sessions, templates: [{ id: 'machine', title: machine.title }, { id: 'barbell', title: barbell.title }] }, preferences, now)
+    const a = result.routines.find(item => item.id === 'a').exercises[0]
+    const b = result.routines.find(item => item.id === 'b').exercises[0]
+    expect(a.sessions).toHaveLength(2)
+    expect(a.latest).toMatchObject({ weight: 45, reps: 10 })
+    expect(a.status).toBe('up')
+    expect(a.equivalentTitles).toContain('Supino com Barra')
+    expect(b.sessions).toHaveLength(1)
+    expect(b.latest.weight).toBe(100)
+    expect(b.equivalentTitles).toEqual([])
+  })
   it('neutralizes the return and compares the next session to the new baseline', () => {
     const series = [workout('1', 40, 50), workout('2', 33, 50), workout('3', 1, 30)]
     expect(current(series).status).toBe('return')

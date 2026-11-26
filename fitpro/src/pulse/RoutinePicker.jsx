@@ -11,7 +11,7 @@ export default function RoutinePicker({ routines, selected, snapshot, onSelect }
       return <button key={r.id} className="routine-choice" aria-pressed={selected === r.id} aria-label={r.title} onClick={() => onSelect(r.id)}>
         <strong>{r.title.match(/^Treino\s+[A-Z]\b/i)?.[0] || r.title.split('—')[0].trim()}</strong>
         <span aria-hidden="true"><BodyMap load={load} className="bm-mini" /></span>
-        <small>{muscles || `${r.exercises.length} exercícios`}</small>
+        <span className="routine-choice-info"><small>{muscles || `${r.exercises.length} exercícios`}</small><small className={r.alerts ? 'amber' : 'green'}>{r.alerts ? `${r.alerts} em atenção` : 'Sem alertas'} · próxima #{r.nextSession}</small></span>
       </button>
     })}</div>
   </section>

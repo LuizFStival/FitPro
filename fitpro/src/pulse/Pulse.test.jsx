@@ -17,13 +17,13 @@ beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn(async url => { const resource = new URL(url, 'http://localhost').searchParams.get('resource'); return { ok: true, json: async () => ({ [resource]: resource === 'routines' ? snapshot.routines : resource === 'workouts' ? snapshot.workouts : [], page_count: 1 }) } }))
   window.scrollTo = vi.fn()
 })
-afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.unstubAllGlobals(); localStorage.clear() })
+afterEach(async () => { await act(async () => root.unmount()); container.remove(); vi.restoreAllMocks(); vi.unstubAllGlobals(); localStorage.clear() })
 async function mount() { await act(async () => { root.render(<Pulse />) }) }
 async function click(text) { const button = [...container.querySelectorAll('button')].find(b => b.textContent === text); expect(button).toBeTruthy(); await act(async () => button.click()) }
 
 it('shows last load and total reps while collapsed and moves name editing exclusively to settings', async () => {
   localStorage.setItem(STORAGE, JSON.stringify({ version: 1, snapshot, preferences: {} }))
-  await mount(); await click('Treino')
+  await mount(); await click('Treinos')
   const exercise = container.querySelector('details.exercise')
   expect(exercise.open).toBe(false)
   expect(exercise.querySelector('.exercise-last').textContent).toContain('100 kg')
@@ -38,7 +38,7 @@ it('shows last load and total reps while collapsed and moves name editing exclus
   await act(async () => form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
   expect(container.textContent).toContain('Nome salvo neste aparelho.')
   expect(JSON.parse(localStorage.getItem(STORAGE)).preferences.names.leg).toBe('Meu leg press')
-  await click('Treino')
+  await click('Treinos')
   expect(container.querySelector('details.exercise summary strong').textContent).toBe('Meu leg press')
   expect(container.querySelector('.exercise-last').textContent).toContain('100 kg')
 })
@@ -46,7 +46,7 @@ it('shows last load and total reps while collapsed and moves name editing exclus
 it('explains mixed progress when maximum load rises but total volume falls', async () => {
   const workouts = [7, 1].map((ago, i) => ({ id: `mixed-${i}`, routine_id: 'b', start_time: new Date(now - ago * DAY).toISOString(), exercises: [{ ...exercises[0], sets: (i ? [55, 55, 40, 40] : [50, 50, 50, 50]).map(weight_kg => ({ type: 'normal', weight_kg, reps: i ? 8 : 10 })) }] }))
   localStorage.setItem(STORAGE, JSON.stringify({ version: 1, snapshot: { ...snapshot, workouts }, preferences: {} }))
-  await mount(); await click('Treino')
+  await mount(); await click('Treinos')
   const exercise = container.querySelector('details.exercise')
   expect(exercise.querySelector('.exercise-last').textContent).toContain('32 reps')
   expect(exercise.querySelector('.mixed-progress').textContent).toContain('2.000 para 1.520 kg')
@@ -58,7 +58,7 @@ it('automatically consults Hevy with a remembered key and opens exercises in rou
   localStorage.setItem(KEY_STORAGE, 'fake-testing-key'); await mount()
   expect(fetch).toHaveBeenCalledTimes(4)
   expect(container.textContent).toContain('2 em atenção')
-  await click('Treino')
+  await click('Treinos')
   expect([...container.querySelectorAll('details.exercise > summary strong')].map(e => e.textContent)).toEqual(exercises.map(e => e.title))
   expect(container.textContent).toContain('Próxima sessão #5')
   expect(container.querySelectorAll('details[open]')).toHaveLength(0)
@@ -69,9 +69,23 @@ it('automatically consults Hevy with a remembered key and opens exercises in rou
   expect(container.textContent).toContain('Treino B')
 })
 
+it('refreshes on app resume but not on every navigation tab', async () => {
+  localStorage.setItem(KEY_STORAGE, 'fake-testing-key')
+  const clock = vi.spyOn(Date, 'now').mockReturnValue(now)
+  await mount()
+  expect(fetch).toHaveBeenCalledTimes(4)
+  await click('Treinos')
+  await click('Estatísticas')
+  await click('Config')
+  expect(fetch).toHaveBeenCalledTimes(4)
+  clock.mockReturnValue(now + 61000)
+  await act(async () => window.dispatchEvent(new Event('focus')))
+  expect(fetch).toHaveBeenCalledTimes(8)
+})
+
 it('loads the execution player only on request and removes it when the exercise closes', async () => {
   localStorage.setItem(STORAGE, JSON.stringify({ version: 1, snapshot, preferences: {} }))
-  await mount(); await click('Treino')
+  await mount(); await click('Treinos')
   expect(container.querySelector('iframe')).toBeNull()
   const exercise = container.querySelectorAll('details.exercise')[1]
   await act(async () => { exercise.open = true; exercise.dispatchEvent(new Event('toggle')) })
@@ -93,12 +107,13 @@ it('loads the execution player only on request and removes it when the exercise 
   expect(container.querySelector('iframe')).toBeNull()
 })
 
-it('keeps A/B/C consistent across plan, workout and statistics, with per-routine alerts and no effort panel', async () => {
+it('unifies plan and workout in Treinos while keeping A/B/C consistent in statistics', async () => {
   const routines = ['b', 'c', 'a'].map(id => ({ id, title: `Treino ${id.toUpperCase()}`, exercises }))
   localStorage.setItem(STORAGE, JSON.stringify({ version: 1, snapshot: { ...snapshot, routines }, preferences: {} }))
-  await mount(); await click('Plano')
-  expect([...container.querySelectorAll('.og-routine-line strong')].map(e => e.textContent)).toEqual(['Treino A', 'Treino B', 'Treino C'])
-  await click('Treino')
+  await mount()
+  expect([...container.querySelectorAll('nav button')].map(e => e.textContent)).toEqual(['Início', 'Treinos', 'Estatísticas', 'Config'])
+  expect(container.textContent).not.toContain('Agenda semanal')
+  await click('Treinos')
   expect([...container.querySelectorAll('.routine-choice > strong')].map(e => e.textContent)).toEqual(['Treino A', 'Treino B', 'Treino C'])
   await click('Estatísticas')
   expect([...container.querySelectorAll('[aria-label="Rotina da evolução"] button')].map(e => e.textContent)).toEqual(['Treino A', 'Treino B', 'Treino C'])
@@ -150,7 +165,7 @@ it('replaces the inactive connection form with an exit link in demo mode', async
 
 it('closes the other exercise and its player when a new exercise opens', async () => {
   localStorage.setItem(STORAGE, JSON.stringify({ version: 1, snapshot, preferences: {} }))
-  await mount(); await click('Treino')
+  await mount(); await click('Treinos')
   const [first, second] = container.querySelectorAll('details.exercise')
   await act(async () => { second.open = true; second.dispatchEvent(new Event('toggle')) })
   await act(async () => second.querySelector('.execution-play').click())
@@ -166,7 +181,7 @@ it('closes the other exercise and its player when a new exercise opens', async (
 it('shows per-routine past sessions with sets, reps and actual elapsed duration', async () => {
   const workouts = snapshot.workouts.map(w => ({ ...w, end_time: new Date(Date.parse(w.start_time) + 55 * 60000).toISOString() }))
   localStorage.setItem(STORAGE, JSON.stringify({ version: 1, snapshot: { ...snapshot, workouts }, preferences: {} }))
-  await mount(); await click('Treino')
+  await mount(); await click('Treinos')
   const history = container.querySelector('.workout-history')
   expect(history.textContent).toContain('4 sessões')
   expect(history.querySelector('summary').textContent).toContain('Sessão #4')
@@ -183,7 +198,7 @@ it('keeps the gym view compact, with comparison details hidden and visual routin
   const workouts = [7, 1].map((ago, i) => ({ id: `up-${i}`, routine_id: 'a', start_time: new Date(now - ago * DAY).toISOString(), exercises: [{ ...exercises[0], sets: Array.from({ length: 4 }, () => ({ type: 'normal', weight_kg: 45, reps: i ? 12 : 11 })) }] }))
   const templates = [{ id: 'leg', primary_muscle_group: 'quadriceps', secondary_muscle_groups: [] }]
   await act(async () => root.render(<Pulse previewSnapshot={{ ...snapshot, routines, workouts, templates }} />))
-  await click('Treino')
+  await click('Treinos')
   expect(container.querySelector('.routine-choice small').textContent).toContain('Quadríceps')
   expect(container.querySelector('.routine-history').open).toBe(false)
   const exercise = container.querySelector('details.exercise')
@@ -200,7 +215,7 @@ it('keeps the gym view compact, with comparison details hidden and visual routin
   expect(container.querySelector('.routine-choice[aria-pressed=true]').getAttribute('aria-label')).toBe('Treino B')
   expect(container.querySelector('details.exercise[open]')).toBeNull()
   expect(container.querySelector('.progress-change')).toBeNull()
-  expect(container.querySelector('.progress-advice').textContent).toContain('Ainda não há uma execução comparável')
+  expect(container.querySelector('.progress-advice').textContent).toContain('Use a execução anterior como referência')
 })
 
 it('shows Hevy cardio time, distance and speed instead of reporting no comparable sets', async () => {
@@ -209,7 +224,7 @@ it('shows Hevy cardio time, distance and speed instead of reporting no comparabl
   const workouts = [7, 1].map((ago, i) => ({ id: `cardio-${i}`, routine_id: 'c', title: 'Treino C', start_time: new Date(now - ago * DAY).toISOString(), end_time: new Date(now - ago * DAY + 45 * 60000).toISOString(), exercises: [{ ...cardio, sets: [{ type: 'normal', distance_meters: i ? 3600 : 3000, duration_seconds: 1800 }] }] }))
   const templates = [{ id: 'cardio', title: 'Treadmill', primary_muscle_group: 'cardio' }]
   await act(async () => root.render(<Pulse previewSnapshot={{ syncedAt: now, routines, workouts, templates }} />))
-  await click('Treino')
+  await click('Treinos')
   const exercise = container.querySelector('details.exercise')
   expect(exercise.querySelector('.exercise-last').textContent).toContain('3,6 km')
   expect(exercise.querySelector('.exercise-last').textContent).toContain('30 min')
@@ -224,6 +239,25 @@ it('shows Hevy cardio time, distance and speed instead of reporting no comparabl
   expect(container.querySelector('.og-chart-summary').textContent).toContain('3,6 km')
 })
 
+it('shows the last comparable load from a removed routine on a fresh workout card', async () => {
+  const previousWorkout = { ...snapshot.workouts.at(-1), routine_id: 'old-b', title: 'Treino B antigo' }
+  localStorage.setItem(STORAGE, JSON.stringify({
+    version: 1,
+    snapshot: { ...snapshot, workouts: [previousWorkout] },
+    preferences: {},
+  }))
+  await mount()
+  await click('Treinos')
+  const exercise = container.querySelector('details.exercise')
+  expect(exercise.querySelector('summary').textContent).toContain('Referência de outro treino')
+  expect(exercise.querySelector('.exercise-last').textContent).toContain('Treino B antigo')
+  expect(exercise.querySelector('.exercise-last').textContent).toContain('100 kg')
+  await act(async () => { exercise.open = true; exercise.dispatchEvent(new Event('toggle')) })
+  expect(exercise.querySelector('.performance-value').textContent).toContain('1 × 10')
+  expect(exercise.querySelector('.stagnation-meter')).toBeNull()
+  expect(exercise.querySelector('.exercise-extra').textContent).toContain('100 kg máx. · 1 séries · 10 reps totais')
+})
+
 it('offers weekly, monthly and custom CSV exports from settings', async () => {
   await act(async () => root.render(<Pulse previewSnapshot={snapshot} />))
   await click('Config')
@@ -235,4 +269,30 @@ it('offers weekly, monthly and custom CSV exports from settings', async () => {
   await act(async () => custom.click())
   expect(section.querySelectorAll('input[type="date"]')).toHaveLength(2)
   expect(section.textContent).toContain('sem incluir sua chave da Hevy')
+})
+
+it('configures an equivalent variation and exposes its combined history in Treinos', async () => {
+  const machine = { index: 0, exercise_template_id: 'machine', title: 'Supino Sentado (Máquina)', sets: [{ type: 'normal', weight_kg: 40, reps: 10 }] }
+  const barbell = { index: 0, exercise_template_id: 'barbell', title: 'Bench Press', sets: [{ type: 'normal', weight_kg: 45, reps: 10 }] }
+  const routines = [{ id: 'a', title: 'Treino A', exercises: [machine] }]
+  const workouts = [
+    { id: 'a1', routine_id: 'a', title: 'Treino A', start_time: new Date(now - 7 * DAY).toISOString(), exercises: [machine] },
+    { id: 'a2', routine_id: 'a', title: 'Treino A', start_time: new Date(now - DAY).toISOString(), exercises: [barbell] },
+  ]
+  const templates = [{ id: 'machine', title: machine.title, primary_muscle_group: 'chest' }, { id: 'barbell', title: barbell.title, primary_muscle_group: 'chest' }]
+  await act(async () => root.render(<Pulse previewSnapshot={{ syncedAt: now, routines, workouts, templates }} />))
+  await click('Treinos')
+  const exercise = container.querySelector('details.exercise')
+  await act(async () => { exercise.open = true; exercise.dispatchEvent(new Event('toggle')) })
+  await click('Marcar variação equivalente…')
+  const section = container.querySelector('.exercise-equivalences')
+  expect(section.querySelector('select').value).toBe('a')
+  expect(section.querySelectorAll('select')[1].value).toBe('machine')
+  expect(section.textContent).toContain('Supino Reto')
+  await act(async () => section.querySelector('.equivalence-options input').click())
+  await act(async () => section.querySelector('form').dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })))
+  expect(section.textContent).toContain('Equivalências salvas neste aparelho.')
+  await click('Treinos')
+  expect(container.querySelector('.equivalence-badge').textContent).toContain('Supino Reto')
+  expect(container.querySelector('.exercise-last').textContent).toContain('45 kg')
 })

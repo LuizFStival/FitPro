@@ -8,22 +8,24 @@ const delta = value => `${value > 0 ? '+' : ''}${format(value)}`
 export default function ProgressStatus({ item }) {
   const previous = item.sessions.at(-2)
   const latest = item.latest
+  const performance = latest ?? item.reference
   const comparable = !['empty', 'new', 'stale', 'return'].includes(item.status)
-  const cardio = latest?.kind === 'cardio'
-  const uniform = !cardio && latest?.setDetails.length && latest.setDetails.every(s => s.weight === latest.setDetails[0].weight && s.reps === latest.setDetails[0].reps)
-  const cardioChange = cardio && previous?.kind === 'cardio' ? cardioComparison(latest, previous) : null
+  const cardio = performance?.kind === 'cardio'
+  const uniform = !cardio && performance?.setDetails.length && performance.setDetails.every(s => s.weight === performance.setDetails[0].weight && s.reps === performance.setDetails[0].reps)
+  const cardioChange = latest?.kind === 'cardio' && previous?.kind === 'cardio' ? cardioComparison(latest, previous) : null
   const recommendation = !comparable ? explanation(item)
     : item.status === 'critical' ? 'Revise execução, descanso e progressão com seu instrutor.'
     : item.status === 'up' ? 'Use esta execução como referência para a próxima sessão.'
     : cardio ? 'Use tempo, distância e ritmo como referência para buscar a próxima evolução.'
     : 'Busque mais repetições com a mesma carga, dentro da faixa do seu plano.'
   return <section className={`progress-status compact-progress ${item.status}`} aria-label="Sua progressão neste treino">
-    {latest && <div className="last-performance">
-      <div className="performance-label"><span>Última execução · {date(latest.at)}</span><span>Próxima #{item.nextSession}</span></div>
-      {cardio ? <p className="performance-value cardio-value"><strong>{latest.distance ? formatDistance(latest.distance) : formatSeconds(latest.duration)}</strong><span>{latest.distance && latest.duration ? `em ${formatSeconds(latest.duration)}` : `${latest.sets} registro${latest.sets === 1 ? '' : 's'}`}</span></p>
-        : uniform ? <p className="performance-value"><strong>{latest.sets} × {latest.setDetails[0].reps}</strong><span>reps · <b>{format(latest.weight)} kg</b></span></p>
-        : <ol className="compact-sets" aria-label="Carga e repetições de cada série">{latest.setDetails.map((s, i) => <li key={i}><small>S{i + 1}</small><b>{format(s.weight)} kg</b><span>× {s.reps}</span></li>)}</ol>}
-      {cardio ? latest.speed ? <small className="performance-total">Velocidade média · {formatSpeed(latest.speed)}</small> : null : <small className="performance-total">{latest.reps} reps totais · {latest.sets} séries</small>}
+    {performance && <div className="last-performance">
+      <div className="performance-label"><span>{latest ? 'Última execução' : 'Referência anterior'} · {date(performance.at)}</span><span>Próxima #{item.nextSession}</span></div>
+      {!latest && <small>{performance.sourceTitle}</small>}
+      {cardio ? <p className="performance-value cardio-value"><strong>{performance.distance ? formatDistance(performance.distance) : formatSeconds(performance.duration)}</strong><span>{performance.distance && performance.duration ? `em ${formatSeconds(performance.duration)}` : `${performance.sets} registro${performance.sets === 1 ? '' : 's'}`}</span></p>
+        : uniform ? <p className="performance-value"><strong>{performance.sets} × {performance.setDetails[0].reps}</strong><span>reps · <b>{format(performance.weight)} kg</b></span></p>
+        : <ol className="compact-sets" aria-label="Carga e repetições de cada série">{performance.setDetails.map((s, i) => <li key={i}><small>S{i + 1}</small><b>{format(s.weight)} kg</b><span>× {s.reps}</span></li>)}</ol>}
+      {cardio ? performance.speed ? <small className="performance-total">Velocidade média · {formatSpeed(performance.speed)}</small> : null : <small className="performance-total">{performance.reps} reps totais · {performance.sets} séries</small>}
     </div>}
     {comparable && previous && <p className="progress-change"><span>vs. {date(previous.at)}</span><strong>{cardioChange ? cardioChange.primary : <>{latest.weight === previous.weight ? 'Mesma carga' : `${delta(latest.weight - previous.weight)} kg máx.`} · {latest.reps === previous.reps ? 'mesmas reps' : `${delta(latest.reps - previous.reps)} reps`}</>}</strong>
       {cardioChange?.secondary && <small>{cardioChange.secondary}</small>}
